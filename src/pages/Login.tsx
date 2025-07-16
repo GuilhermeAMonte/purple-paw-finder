@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Heart, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -15,6 +16,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,9 +45,8 @@ const Login = () => {
       return;
     }
 
-    // Simulação de login (aqui você conectaria com seu backend)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await login(email, password);
       
       toast({
         title: "Sucesso!",
@@ -54,10 +55,10 @@ const Login = () => {
       
       // Redirecionar para a página principal
       navigate('/');
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Erro",
-        description: "Credenciais inválidas. Tente novamente.",
+        description: error.message || "Credenciais inválidas. Tente novamente.",
         variant: "destructive",
       });
     }

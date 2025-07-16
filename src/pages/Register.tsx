@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Heart, ArrowLeft, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { register } = useAuth();
 
   // Validação de senha em tempo real
   const passwordValidation = {
@@ -87,7 +89,7 @@ const Register = () => {
     }
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await register(formData.name, formData.email, formData.password);
       
       toast({
         title: "Sucesso!",
@@ -95,10 +97,10 @@ const Register = () => {
       });
       
       navigate('/login');
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Erro",
-        description: "Erro ao criar conta. Tente novamente.",
+        description: error.message || "Erro ao criar conta. Tente novamente.",
         variant: "destructive",
       });
     }

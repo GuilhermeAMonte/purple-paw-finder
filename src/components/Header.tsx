@@ -1,10 +1,23 @@
 
 import React from 'react';
-import { Search, MapPin, Heart, User } from 'lucide-react';
+import { Search, MapPin, Heart, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Header = () => {
+  const { user, logout, isAuthenticated } = useAuth();
+
+  const getFirstName = (fullName: string) => {
+    return fullName.split(' ')[0];
+  };
+
   return (
     <header className="bg-white shadow-sm border-b border-purple-100 sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
@@ -31,12 +44,30 @@ const Header = () => {
               <Heart className="w-5 h-5 mr-2" />
               Favoritos
             </Button>
-            <Link to="/login">
-              <Button variant="ghost" size="sm" className="text-gray-600 hover:text-purple-600">
-                <User className="w-5 h-5 mr-2" />
-                Entrar
-              </Button>
-            </Link>
+            
+            {isAuthenticated ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-gray-600 hover:text-purple-600">
+                    <User className="w-5 h-5 mr-2" />
+                    {getFirstName(user!.name)}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={logout}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sair
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link to="/login">
+                <Button variant="ghost" size="sm" className="text-gray-600 hover:text-purple-600">
+                  <User className="w-5 h-5 mr-2" />
+                  Entrar
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>
