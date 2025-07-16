@@ -28,7 +28,7 @@ const Header = () => {
               <Heart className="w-5 h-5 text-background" />
             </div>
             <h1 className="text-xl font-semibold text-foreground">
-              VetFind
+              Paw Connect
             </h1>
           </Link>
 

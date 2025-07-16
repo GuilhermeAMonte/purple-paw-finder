@@ -1,77 +1,76 @@
 
 import React, { useState } from 'react';
-import { Search, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Search, MapPin } from 'lucide-react';
 
 const SearchSection = () => {
-  const [searchTerm, setSearchTerm] = useState('');
   const [location, setLocation] = useState('');
+  const [specialty, setSpecialty] = useState('');
 
   return (
-    <section className="relative py-24 md:py-32 bg-gradient-to-b from-background to-muted/30 overflow-hidden">
-      {/* Background elements */}
-      <div className="absolute inset-0 opacity-30">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-muted rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-muted rounded-full blur-3xl"></div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-6 relative z-10">
-        <div className="text-center mb-16 animate-fade-in">
-          <h1 className="text-hero text-foreground mb-6 max-w-4xl mx-auto">
-            Encontre cuidados veterinários excepcionais
+    <section className="relative min-h-[600px] flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/60 to-background/80"></div>
+      
+      <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
+        <div className="animate-fade-in">
+          <h1 className="text-5xl md:text-7xl font-light text-foreground mb-6 leading-tight tracking-tight">
+            Cuidado veterinário
+            <br />
+            <span className="font-medium text-primary">próximo de você</span>
           </h1>
-          <p className="text-large text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Conecte-se com os melhores profissionais veterinários da sua região. Simples, rápido e confiável.
+          <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed font-light">
+            Com o Paw Connect, encontre os melhores profissionais para o cuidado do seu pet
           </p>
         </div>
 
-        {/* Search Form */}
-        <div className="max-w-4xl mx-auto animate-slide-up">
-          <div className="glass-effect rounded-2xl p-8 apple-shadow-lg">
-            <div className="grid md:grid-cols-2 gap-4 mb-6">
-              {/* Search Input */}
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                <Input
-                  placeholder="Buscar clínicas, veterinários..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 h-14 text-base border-border/50 bg-background/50 rounded-xl smooth-transition focus:border-foreground focus:ring-1 focus:ring-foreground"
-                />
-              </div>
-
-              {/* Location Input */}
-              <div className="relative">
-                <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
-                <Input
-                  placeholder="Sua localização"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="pl-12 h-14 text-base border-border/50 bg-background/50 rounded-xl smooth-transition focus:border-foreground focus:ring-1 focus:ring-foreground"
-                />
-              </div>
+        <div className="glass-effect rounded-2xl p-8 max-w-3xl mx-auto animate-slide-up border border-border/20">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="relative">
+              <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+              <Input
+                placeholder="Sua localização"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="pl-12 h-14 rounded-xl border-border/30 bg-background/80 text-lg font-light focus:ring-2 focus:ring-primary/20 focus:border-primary/40 smooth-transition"
+              />
             </div>
-
-            {/* Search Button */}
-            <Button className="w-full h-14 text-base font-medium bg-foreground text-background hover:bg-foreground/90 rounded-xl smooth-transition apple-shadow">
-              <Search className="w-5 h-5 mr-2" />
-              Buscar agora
-            </Button>
-
-            {/* Quick Filters */}
-            <div className="flex flex-wrap gap-3 mt-6 pt-6 border-t border-border/30">
-              <span className="text-sm text-muted-foreground font-medium">Busca rápida:</span>
-              <Button variant="outline" size="sm" className="rounded-full border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground smooth-transition">
-                Emergência 24h
-              </Button>
-              <Button variant="outline" size="sm" className="rounded-full border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground smooth-transition">
-                Próximo a mim
-              </Button>
-              <Button variant="outline" size="sm" className="rounded-full border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground smooth-transition">
-                Melhor avaliado
-              </Button>
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+              <Input
+                placeholder="Especialidade ou serviço"
+                value={specialty}
+                onChange={(e) => setSpecialty(e.target.value)}
+                className="pl-12 h-14 rounded-xl border-border/30 bg-background/80 text-lg font-light focus:ring-2 focus:ring-primary/20 focus:border-primary/40 smooth-transition"
+              />
             </div>
+          </div>
+          
+          <Button 
+            size="lg" 
+            className="w-full h-14 text-lg font-medium rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl smooth-transition hover-lift"
+          >
+            <Search className="w-5 h-5 mr-3" />
+            Buscar clínicas veterinárias
+          </Button>
+        </div>
+
+        <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-8 animate-fade-in">
+          <div className="text-center">
+            <div className="text-3xl font-semibold text-foreground mb-2">500+</div>
+            <div className="text-sm text-muted-foreground font-light">Clínicas parceiras</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-semibold text-foreground mb-2">24h</div>
+            <div className="text-sm text-muted-foreground font-light">Atendimento disponível</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-semibold text-foreground mb-2">10k+</div>
+            <div className="text-sm text-muted-foreground font-light">Pets atendidos</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl font-semibold text-foreground mb-2">4.8★</div>
+            <div className="text-sm text-muted-foreground font-light">Avaliação média</div>
           </div>
         </div>
       </div>
