@@ -4,29 +4,29 @@ import { Heart, Facebook, Instagram, Twitter } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-900 text-white py-12">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer className="bg-foreground text-background py-20">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           {/* Logo and Description */}
           <div className="md:col-span-2">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 gradient-purple rounded-full flex items-center justify-center">
-                <Heart className="w-5 h-5 text-white" />
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-9 h-9 bg-background rounded-full flex items-center justify-center">
+                <Heart className="w-5 h-5 text-foreground" />
               </div>
-              <h3 className="text-xl font-bold">VetFind</h3>
+              <h3 className="text-xl font-semibold">VetFind</h3>
             </div>
-            <p className="text-gray-400 mb-6 max-w-md">
+            <p className="text-background/70 mb-8 max-w-md leading-relaxed text-lg">
               Conectando tutores aos melhores cuidados veterinários. 
-              Encontre clínicas de qualidade próximas a você de forma rápida e confiável.
+              Encontre profissionais qualificados próximos a você de forma simples e confiável.
             </p>
             <div className="flex space-x-4">
-              <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-purple-600 transition-colors cursor-pointer">
+              <div className="w-12 h-12 bg-background/10 rounded-full flex items-center justify-center hover:bg-background/20 smooth-transition cursor-pointer">
                 <Facebook className="w-5 h-5" />
               </div>
-              <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-purple-600 transition-colors cursor-pointer">
+              <div className="w-12 h-12 bg-background/10 rounded-full flex items-center justify-center hover:bg-background/20 smooth-transition cursor-pointer">
                 <Instagram className="w-5 h-5" />
               </div>
-              <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-purple-600 transition-colors cursor-pointer">
+              <div className="w-12 h-12 bg-background/10 rounded-full flex items-center justify-center hover:bg-background/20 smooth-transition cursor-pointer">
                 <Twitter className="w-5 h-5" />
               </div>
             </div>
@@ -34,29 +34,29 @@ const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-lg font-semibold mb-4">Links Rápidos</h4>
-            <ul className="space-y-2 text-gray-400">
-              <li><a href="#" className="hover:text-white transition-colors">Buscar Clínicas</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Emergência 24h</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Cadastrar Clínica</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Sobre Nós</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Contato</a></li>
+            <h4 className="text-lg font-semibold mb-6">Navegação</h4>
+            <ul className="space-y-4 text-background/70">
+              <li><a href="#" className="hover:text-background smooth-transition">Buscar Clínicas</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">Emergência 24h</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">Cadastrar Clínica</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">Sobre Nós</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">Contato</a></li>
             </ul>
           </div>
 
           {/* Support */}
           <div>
-            <h4 className="text-lg font-semibold mb-4">Suporte</h4>
-            <ul className="space-y-2 text-gray-400">
-              <li><a href="#" className="hover:text-white transition-colors">Central de Ajuda</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Termos de Uso</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Política de Privacidade</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">FAQ</a></li>
+            <h4 className="text-lg font-semibold mb-6">Suporte</h4>
+            <ul className="space-y-4 text-background/70">
+              <li><a href="#" className="hover:text-background smooth-transition">Central de Ajuda</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">Termos de Uso</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">Política de Privacidade</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">FAQ</a></li>
             </ul>
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+        <div className="border-t border-background/20 pt-8 text-center text-background/60">
           <p>&copy; 2024 VetFind. Todos os direitos reservados.</p>
         </div>
       </div>

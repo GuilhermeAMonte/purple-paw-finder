@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Search, MapPin, Filter } from 'lucide-react';
+import { Search, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -9,71 +9,66 @@ const SearchSection = () => {
   const [location, setLocation] = useState('');
 
   return (
-    <section className="gradient-purple py-16 relative overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-10 left-10 w-32 h-32 bg-white rounded-full"></div>
-        <div className="absolute top-32 right-20 w-20 h-20 bg-white rounded-full"></div>
-        <div className="absolute bottom-20 left-1/3 w-16 h-16 bg-white rounded-full"></div>
+    <section className="relative py-24 md:py-32 bg-gradient-to-b from-background to-muted/30 overflow-hidden">
+      {/* Background elements */}
+      <div className="absolute inset-0 opacity-30">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-muted rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-muted rounded-full blur-3xl"></div>
       </div>
 
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="text-center mb-12 animate-fade-in">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Encontre a melhor clínica veterinária
-          </h2>
-          <p className="text-purple-100 text-lg max-w-2xl mx-auto">
-            Cuidado especializado para seu pet está a poucos cliques de distância
+      <div className="max-w-6xl mx-auto px-6 relative z-10">
+        <div className="text-center mb-16 animate-fade-in">
+          <h1 className="text-hero text-foreground mb-6 max-w-4xl mx-auto">
+            Encontre cuidados veterinários excepcionais
+          </h1>
+          <p className="text-large text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Conecte-se com os melhores profissionais veterinários da sua região. Simples, rápido e confiável.
           </p>
         </div>
 
         {/* Search Form */}
         <div className="max-w-4xl mx-auto animate-slide-up">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 md:p-8">
-            <div className="grid md:grid-cols-3 gap-4">
+          <div className="glass-effect rounded-2xl p-8 apple-shadow-lg">
+            <div className="grid md:grid-cols-2 gap-4 mb-6">
               {/* Search Input */}
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
                 <Input
                   placeholder="Buscar clínicas, veterinários..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-12 h-14 text-lg border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                  className="pl-12 h-14 text-base border-border/50 bg-background/50 rounded-xl smooth-transition focus:border-foreground focus:ring-1 focus:ring-foreground"
                 />
               </div>
 
               {/* Location Input */}
               <div className="relative">
-                <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
                 <Input
                   placeholder="Sua localização"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="pl-12 h-14 text-lg border-gray-200 focus:border-purple-500 focus:ring-purple-500"
+                  className="pl-12 h-14 text-base border-border/50 bg-background/50 rounded-xl smooth-transition focus:border-foreground focus:ring-1 focus:ring-foreground"
                 />
               </div>
-
-              {/* Search Button */}
-              <Button className="h-14 text-lg font-semibold gradient-purple hover:opacity-90 transition-opacity">
-                <Search className="w-5 h-5 mr-2" />
-                Buscar
-              </Button>
             </div>
 
+            {/* Search Button */}
+            <Button className="w-full h-14 text-base font-medium bg-foreground text-background hover:bg-foreground/90 rounded-xl smooth-transition apple-shadow">
+              <Search className="w-5 h-5 mr-2" />
+              Buscar agora
+            </Button>
+
             {/* Quick Filters */}
-            <div className="flex flex-wrap gap-3 mt-6 pt-6 border-t border-gray-100">
-              <span className="text-sm text-gray-600 font-medium">Filtros rápidos:</span>
-              <Button variant="outline" size="sm" className="text-purple-600 border-purple-200 hover:bg-purple-50">
-                <Filter className="w-4 h-4 mr-1" />
-                24h
+            <div className="flex flex-wrap gap-3 mt-6 pt-6 border-t border-border/30">
+              <span className="text-sm text-muted-foreground font-medium">Busca rápida:</span>
+              <Button variant="outline" size="sm" className="rounded-full border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground smooth-transition">
+                Emergência 24h
               </Button>
-              <Button variant="outline" size="sm" className="text-purple-600 border-purple-200 hover:bg-purple-50">
-                Emergência
-              </Button>
-              <Button variant="outline" size="sm" className="text-purple-600 border-purple-200 hover:bg-purple-50">
+              <Button variant="outline" size="sm" className="rounded-full border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground smooth-transition">
                 Próximo a mim
               </Button>
-              <Button variant="outline" size="sm" className="text-purple-600 border-purple-200 hover:bg-purple-50">
+              <Button variant="outline" size="sm" className="rounded-full border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground smooth-transition">
                 Melhor avaliado
               </Button>
             </div>
