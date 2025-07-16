@@ -3,8 +3,10 @@ import React from 'react';
 import { Star, MapPin, Phone, Heart, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
 
 interface ClinicCardProps {
+  id?: string;
   name: string;
   rating: number;
   reviews: number;
@@ -17,6 +19,7 @@ interface ClinicCardProps {
 }
 
 const ClinicCard: React.FC<ClinicCardProps> = ({
+  id = "1", // valor padrão para compatibilidade
   name,
   rating,
   reviews,
@@ -27,6 +30,12 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
   image,
   emergency = false,
 }) => {
+  const navigate = useNavigate();
+
+  const handleViewDetails = () => {
+    navigate(`/clinic/${id}`);
+  };
+
   return (
     <div className="bg-card rounded-2xl apple-shadow hover-lift smooth-transition border border-border/40 overflow-hidden cursor-pointer group">
       {/* Image */}
@@ -105,7 +114,10 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
 
         {/* Actions */}
         <div className="flex gap-3">
-          <Button className="flex-1 bg-foreground text-background hover:bg-foreground/90 rounded-xl smooth-transition font-medium">
+          <Button 
+            onClick={handleViewDetails}
+            className="flex-1 bg-foreground text-background hover:bg-foreground/90 rounded-xl smooth-transition font-medium"
+          >
             Ver detalhes
           </Button>
           <Button 

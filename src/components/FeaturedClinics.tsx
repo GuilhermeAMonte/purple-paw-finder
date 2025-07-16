@@ -6,6 +6,7 @@ import ClinicCard from './ClinicCard';
 const FeaturedClinics = () => {
   const clinics = [
     {
+      id: "1",
       name: "Clínica Veterinária Pet Care",
       rating: 4.8,
       reviews: 247,
@@ -17,6 +18,7 @@ const FeaturedClinics = () => {
       emergency: true,
     },
     {
+      id: "2",
       name: "Hospital Veterinário Animal Life",
       rating: 4.9,
       reviews: 156,
@@ -28,6 +30,7 @@ const FeaturedClinics = () => {
       emergency: true,
     },
     {
+      id: "3",
       name: "VetClinic Premium",
       rating: 4.7,
       reviews: 89,
@@ -38,6 +41,7 @@ const FeaturedClinics = () => {
       image: "",
     },
     {
+      id: "4",
       name: "Centro Veterinário Bicho Feliz",
       rating: 4.6,
       reviews: 312,
@@ -48,6 +52,7 @@ const FeaturedClinics = () => {
       image: "",
     },
     {
+      id: "5",
       name: "Clínica Dr. Pets",
       rating: 4.8,
       reviews: 198,
@@ -58,6 +63,7 @@ const FeaturedClinics = () => {
       image: "",
     },
     {
+      id: "6",
       name: "Animal Hospital São Paulo",
       rating: 4.9,
       reviews: 423,
