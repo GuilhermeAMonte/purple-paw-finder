@@ -3,7 +3,6 @@ import React from 'react';
 import Header from '@/components/Header';
 import SearchSection from '@/components/SearchSection';
 import FeaturedClinics from '@/components/FeaturedClinics';
-import Features from '@/components/Features';
 import Footer from '@/components/Footer';
 
 const Index = () => {
@@ -12,7 +11,6 @@ const Index = () => {
       <Header />
       <SearchSection />
       <FeaturedClinics />
-      <Features />
       <Footer />
     </div>
   );

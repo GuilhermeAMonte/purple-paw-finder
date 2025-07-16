@@ -63,17 +63,17 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				gray: {
-					50: '0 0% 98%',
-					100: '0 0% 96%',
-					200: '0 0% 90%',
-					300: '0 0% 83%',
-					400: '0 0% 64%',
-					500: '0 0% 45%',
-					600: '0 0% 32%',
-					700: '0 0% 25%',
-					800: '0 0% 15%',
-					900: '0 0% 9%',
+				purple: {
+					50: '263 57% 98%',
+					100: '263 57% 96%',
+					200: '263 45% 88%',
+					300: '262 40% 78%',
+					400: '262 45% 68%',
+					500: '262 83% 58%',
+					600: '262 85% 48%',
+					700: '262 90% 40%',
+					800: '262 95% 32%',
+					900: '262 100% 24%',
 				}
 			},
 			borderRadius: {
@@ -82,7 +82,7 @@ export default {
 				sm: 'calc(var(--radius) - 4px)'
 			},
 			fontFamily: {
-				sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+				sans: ['SF Pro Display', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
 			},
 			keyframes: {
 				'fade-in': {
