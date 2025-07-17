@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,24 +6,100 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+
+interface Pet {
+  id: string;
+  name: string;
+  species: string;
+  breed: string;
+  age: string;
+  weight: string;
+  color: string;
+  notes: string;
+}
 
 const CreateTicket = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
-  const [selectedService, setSelectedService] = useState('');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
+  
+  const [formData, setFormData] = useState({
+    service: '',
+    title: '',
+    description: '',
+    petName: '',
+    petSpecies: '',
+    petBreed: '',
+    petAge: '',
+    petWeight: '',
+    petColor: '',
+    petNotes: '',
+    ownerName: user?.name || '',
+    ownerPhone: localStorage.getItem(`phone_${user?.id}`) || '',
+    ownerEmail: user?.email || '',
+    ownerAddress: localStorage.getItem(`address_${user?.id}`) || ''
+  });
+  
   const [file, setFile] = useState<File | null>(null);
 
   // Mock data da clínica
   const clinic = {
     name: "Clínica Veterinária Pet Care",
     services: ["Clínica Geral", "Cirurgia", "Dermatologia", "Radiologia", "Cardiologia"]
+  };
+
+  // Carregar pets do usuário
+  useEffect(() => {
+    if (user?.id) {
+      const userPets = JSON.parse(localStorage.getItem(`pets_${user.id}`) || '[]');
+      setPets(userPets);
+    }
+  }, [user]);
+
+  // Pré-preencher dados quando um pet é selecionado
+  const handlePetSelection = (petId: string) => {
+    const pet = pets.find(p => p.id === petId);
+    if (pet) {
+      setSelectedPet(pet);
+      setFormData(prev => ({
+        ...prev,
+        petName: pet.name,
+        petSpecies: pet.species === 'dog' ? 'Cachorro' : pet.species === 'cat' ? 'Gato' : pet.species,
+        petBreed: pet.breed,
+        petAge: pet.age,
+        petWeight: pet.weight,
+        petColor: pet.color,
+        petNotes: pet.notes
+      }));
+    } else {
+      setSelectedPet(null);
+      setFormData(prev => ({
+        ...prev,
+        petName: '',
+        petSpecies: '',
+        petBreed: '',
+        petAge: '',
+        petWeight: '',
+        petColor: '',
+        petNotes: ''
+      }));
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,7 +114,7 @@ const CreateTicket = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedService || !title || !description) {
+    if (!formData.service || !formData.title || !formData.description) {
       toast({
         title: "Erro",
         description: "Por favor, preencha todos os campos obrigatórios.",
@@ -48,7 +123,27 @@ const CreateTicket = () => {
       return;
     }
 
-    if (selectedService !== "Clínica Geral" && !file) {
+    // Validar se há informações do pet
+    if (!formData.petName || !formData.petSpecies) {
+      toast({
+        title: "Erro",
+        description: "Informações do pet são obrigatórias",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validar se há informações do proprietário
+    if (!formData.ownerName || !formData.ownerPhone || !formData.ownerEmail) {
+      toast({
+        title: "Erro",
+        description: "Informações do proprietário são obrigatórias",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.service !== "Clínica Geral" && !file) {
       toast({
         title: "Erro", 
         description: "Para serviços especializados é necessário anexar o encaminhamento do clínico geral.",
@@ -66,7 +161,7 @@ const CreateTicket = () => {
     navigate(`/clinic/${id}`);
   };
 
-  const needsReferral = selectedService && selectedService !== "Clínica Geral";
+  const needsReferral = formData.service && formData.service !== "Clínica Geral";
 
   return (
     <div className="min-h-screen bg-background">
@@ -98,12 +193,37 @@ const CreateTicket = () => {
           {/* Formulário */}
           <div className="bg-card rounded-3xl p-8 apple-shadow border border-border/40">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Seleção de Pet */}
+              <div>
+                <Label htmlFor="pet-select" className="text-base font-medium text-foreground mb-3 block">
+                  Selecionar Pet
+                </Label>
+                <Select onValueChange={handlePetSelection}>
+                  <SelectTrigger className="h-12 rounded-xl border-border/50">
+                    <SelectValue placeholder="Escolha um pet ou preencha manualmente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Preencher manualmente</SelectItem>
+                    {pets.map(pet => (
+                      <SelectItem key={pet.id} value={pet.id}>
+                        {pet.name} - {pet.species === 'dog' ? 'Cachorro' : pet.species === 'cat' ? 'Gato' : pet.species}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {pets.length === 0 && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Nenhum pet cadastrado. Você pode adicionar pets em seu perfil ou preencher manualmente.
+                  </p>
+                )}
+              </div>
+
               {/* Tipo de Atendimento */}
               <div>
                 <Label htmlFor="service" className="text-base font-medium text-foreground mb-3 block">
                   Tipo de Atendimento *
                 </Label>
-                <Select value={selectedService} onValueChange={setSelectedService}>
+                <Select value={formData.service} onValueChange={(value) => setFormData(prev => ({ ...prev, service: value }))}>
                   <SelectTrigger className="h-12 rounded-xl border-border/50">
                     <SelectValue placeholder="Selecione o tipo de atendimento" />
                   </SelectTrigger>
@@ -118,7 +238,7 @@ const CreateTicket = () => {
               </div>
 
               {/* Formulário aparece só após seleção do serviço */}
-              {selectedService && (
+              {formData.service && (
                 <>
                   {/* Título */}
                   <div>
@@ -127,8 +247,9 @@ const CreateTicket = () => {
                     </Label>
                     <Input
                       id="title"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
                       placeholder="Escreva aqui um título para o problema"
                       className="h-12 rounded-xl border-border/50"
                     />
@@ -141,12 +262,189 @@ const CreateTicket = () => {
                     </Label>
                     <Textarea
                       id="description"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
                       placeholder="Descreva detalhadamente o que o animal está sentindo, sintomas observados, há quanto tempo começou, etc."
                       rows={6}
                       className="rounded-xl border-border/50 resize-none"
                     />
+                  </div>
+
+                  {/* Informações do Pet */}
+                  <div className="space-y-4">
+                    <Label className="text-base font-medium text-foreground">
+                      Informações do Pet *
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="petName" className="text-sm font-medium text-foreground mb-2 block">
+                          Nome do Pet
+                        </Label>
+                        <Input
+                          id="petName"
+                          name="petName"
+                          value={formData.petName}
+                          onChange={handleInputChange}
+                          placeholder="Nome do seu pet"
+                          className="h-10 rounded-xl border-border/50"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="petSpecies" className="text-sm font-medium text-foreground mb-2 block">
+                          Espécie
+                        </Label>
+                        <Input
+                          id="petSpecies"
+                          name="petSpecies"
+                          value={formData.petSpecies}
+                          onChange={handleInputChange}
+                          placeholder="Ex: Cachorro, Gato"
+                          className="h-10 rounded-xl border-border/50"
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="petBreed" className="text-sm font-medium text-foreground mb-2 block">
+                          Raça
+                        </Label>
+                        <Input
+                          id="petBreed"
+                          name="petBreed"
+                          value={formData.petBreed}
+                          onChange={handleInputChange}
+                          placeholder="Ex: Labrador"
+                          className="h-10 rounded-xl border-border/50"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="petAge" className="text-sm font-medium text-foreground mb-2 block">
+                          Idade
+                        </Label>
+                        <Input
+                          id="petAge"
+                          name="petAge"
+                          value={formData.petAge}
+                          onChange={handleInputChange}
+                          placeholder="Ex: 2 anos"
+                          className="h-10 rounded-xl border-border/50"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="petWeight" className="text-sm font-medium text-foreground mb-2 block">
+                          Peso
+                        </Label>
+                        <Input
+                          id="petWeight"
+                          name="petWeight"
+                          value={formData.petWeight}
+                          onChange={handleInputChange}
+                          placeholder="Ex: 15kg"
+                          className="h-10 rounded-xl border-border/50"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="petColor" className="text-sm font-medium text-foreground mb-2 block">
+                        Cor
+                      </Label>
+                      <Input
+                        id="petColor"
+                        name="petColor"
+                        value={formData.petColor}
+                        onChange={handleInputChange}
+                        placeholder="Ex: Marrom e branco"
+                        className="h-10 rounded-xl border-border/50"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="petNotes" className="text-sm font-medium text-foreground mb-2 block">
+                        Observações sobre o Pet
+                      </Label>
+                      <Textarea
+                        id="petNotes"
+                        name="petNotes"
+                        value={formData.petNotes}
+                        onChange={handleInputChange}
+                        placeholder="Comportamento, alergias, medicamentos em uso, etc."
+                        rows={3}
+                        className="rounded-xl border-border/50 resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Informações do Proprietário */}
+                  <div className="space-y-4">
+                    <Label className="text-base font-medium text-foreground">
+                      Informações do Proprietário *
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="ownerName" className="text-sm font-medium text-foreground mb-2 block">
+                          Nome Completo
+                        </Label>
+                        <Input
+                          id="ownerName"
+                          name="ownerName"
+                          value={formData.ownerName}
+                          onChange={handleInputChange}
+                          placeholder="Seu nome completo"
+                          className="h-10 rounded-xl border-border/50"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="ownerPhone" className="text-sm font-medium text-foreground mb-2 block">
+                          Telefone
+                        </Label>
+                        <Input
+                          id="ownerPhone"
+                          name="ownerPhone"
+                          value={formData.ownerPhone}
+                          onChange={handleInputChange}
+                          placeholder="(11) 99999-9999"
+                          className="h-10 rounded-xl border-border/50"
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="ownerEmail" className="text-sm font-medium text-foreground mb-2 block">
+                          Email
+                        </Label>
+                        <Input
+                          id="ownerEmail"
+                          name="ownerEmail"
+                          type="email"
+                          value={formData.ownerEmail}
+                          onChange={handleInputChange}
+                          placeholder="seu@email.com"
+                          className="h-10 rounded-xl border-border/50"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="ownerAddress" className="text-sm font-medium text-foreground mb-2 block">
+                          Endereço
+                        </Label>
+                        <Input
+                          id="ownerAddress"
+                          name="ownerAddress"
+                          value={formData.ownerAddress}
+                          onChange={handleInputChange}
+                          placeholder="Rua, número, bairro"
+                          className="h-10 rounded-xl border-border/50"
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   {/* Upload de arquivo para serviços especializados */}
