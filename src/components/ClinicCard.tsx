@@ -34,6 +34,7 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
 
   const handleViewDetails = () => {
     navigate(`/clinic/${id}`);
+    window.scrollTo(0, 0);
   };
 
   return (
