@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Heart, User, LogOut } from 'lucide-react';
+import { Heart, User, LogOut, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -63,6 +63,15 @@ const Header = () => {
                   align="end" 
                   className="glass-effect border-border/40 rounded-xl shadow-lg"
                 >
+                  <DropdownMenuItem asChild>
+                    <Link 
+                      to="/profile"
+                      className="text-sm rounded-lg smooth-transition cursor-pointer"
+                    >
+                      <Settings className="w-4 h-4 mr-2" />
+                      Meu Perfil
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={logout}
                     className="text-sm rounded-lg smooth-transition"

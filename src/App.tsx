@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ClinicDetails from "./pages/ClinicDetails";
 import CreateTicket from "./pages/CreateTicket";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/clinic/:id" element={<ClinicDetails />} />
             <Route path="/clinic/:id/create-ticket" element={<CreateTicket />} />
+            <Route path="/profile" element={<Profile />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
