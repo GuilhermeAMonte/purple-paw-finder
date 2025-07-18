@@ -11,6 +11,7 @@ import { Camera, Save, ArrowLeft, Plus, Trash2, Heart } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import BreedSelector from '@/components/BreedSelector';
 
 interface Pet {
   id: string;
@@ -79,7 +80,15 @@ const Profile = () => {
   const handlePetSpeciesChange = (value: string) => {
     setNewPet(prev => ({
       ...prev,
-      species: value
+      species: value,
+      breed: '' // Reset breed when species changes
+    }));
+  };
+
+  const handlePetBreedChange = (value: string) => {
+    setNewPet(prev => ({
+      ...prev,
+      breed: value
     }));
   };
 
@@ -431,12 +440,10 @@ const Profile = () => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="petBreed">Raça</Label>
-                            <Input
-                              id="petBreed"
-                              name="breed"
+                            <BreedSelector
+                              species={newPet.species}
                               value={newPet.breed}
-                              onChange={handlePetInputChange}
-                              placeholder="Ex: Labrador"
+                              onChange={handlePetBreedChange}
                             />
                           </div>
                           <div className="space-y-2">
