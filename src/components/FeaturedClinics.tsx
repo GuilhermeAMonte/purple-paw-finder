@@ -1,9 +1,24 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import ClinicCard from './ClinicCard';
+import { useFavorites } from '@/contexts/FavoritesContext';
 
 const FeaturedClinics = () => {
+  const { favorites } = useFavorites();
+  const [activeTab, setActiveTab] = useState<'all' | 'favorites' | 'emergency'>('all');
+
+  useEffect(() => {
+    const handleSetTab = (event: CustomEvent) => {
+      setActiveTab(event.detail);
+    };
+
+    document.addEventListener('setClinicTab', handleSetTab as EventListener);
+    return () => {
+      document.removeEventListener('setClinicTab', handleSetTab as EventListener);
+    };
+  }, []);
+
   const clinics = [
     {
       id: "1",
@@ -16,6 +31,7 @@ const FeaturedClinics = () => {
       isOpen: true,
       image: "",
       emergency: true,
+      phone: "(11) 1234-5678",
     },
     {
       id: "2",
@@ -28,6 +44,7 @@ const FeaturedClinics = () => {
       isOpen: true,
       image: "",
       emergency: true,
+      phone: "(11) 2345-6789",
     },
     {
       id: "3",
@@ -39,6 +56,7 @@ const FeaturedClinics = () => {
       specialties: ["Estética", "Odontologia", "Fisioterapia"],
       isOpen: false,
       image: "",
+      phone: "(11) 3456-7890",
     },
     {
       id: "4",
@@ -50,6 +68,7 @@ const FeaturedClinics = () => {
       specialties: ["Vacinação", "Clínica Geral", "Exames"],
       isOpen: true,
       image: "",
+      phone: "(11) 4567-8901",
     },
     {
       id: "5",
@@ -61,6 +80,7 @@ const FeaturedClinics = () => {
       specialties: ["Oftalmologia", "Ortopedia", "Radiologia"],
       isOpen: true,
       image: "",
+      phone: "(11) 5678-9012",
     },
     {
       id: "6",
@@ -73,11 +93,25 @@ const FeaturedClinics = () => {
       isOpen: true,
       image: "",
       emergency: true,
+      phone: "(11) 6789-0123",
     },
   ];
 
+  const getFilteredClinics = () => {
+    switch (activeTab) {
+      case 'favorites':
+        return clinics.filter(clinic => favorites.includes(clinic.id));
+      case 'emergency':
+        return clinics.filter(clinic => clinic.emergency);
+      default:
+        return clinics;
+    }
+  };
+
+  const filteredClinics = getFilteredClinics();
+
   return (
-    <section className="py-24 bg-background">
+    <section id="clinics" className="py-24 bg-background">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-16 animate-fade-in">
           <h2 className="text-4xl md:text-5xl font-semibold text-foreground mb-6 leading-tight">
@@ -88,13 +122,51 @@ const FeaturedClinics = () => {
           </p>
         </div>
 
+        {/* Filter Tabs */}
+        <div className="flex justify-center mb-12">
+          <div className="flex bg-muted/50 rounded-full p-1">
+            <Button
+              variant={activeTab === 'all' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('all')}
+              className="rounded-full px-6 py-2 text-sm font-medium"
+            >
+              Todas
+            </Button>
+            <Button
+              variant={activeTab === 'favorites' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('favorites')}
+              className="rounded-full px-6 py-2 text-sm font-medium"
+            >
+              Favoritos
+            </Button>
+            <Button
+              variant={activeTab === 'emergency' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('emergency')}
+              className="rounded-full px-6 py-2 text-sm font-medium"
+            >
+              Emergência
+            </Button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16 animate-slide-up">
-          {clinics.map((clinic, index) => (
-            <ClinicCard
-              key={index}
-              {...clinic}
-            />
-          ))}
+          {filteredClinics.length > 0 ? (
+            filteredClinics.map((clinic, index) => (
+              <ClinicCard
+                key={clinic.id}
+                {...clinic}
+              />
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-muted-foreground text-lg">
+                {activeTab === 'favorites' 
+                  ? 'Você ainda não tem clínicas favoritas.' 
+                  : 'Nenhuma clínica de emergência encontrada.'
+                }
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="text-center">

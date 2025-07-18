@@ -34,15 +34,40 @@ const Header = () => {
 
           {/* Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition">
+            <a 
+              href="#search" 
+              onClick={(e) => {
+                e.preventDefault();
+                document.querySelector('#search')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition cursor-pointer"
+            >
               Buscar
-            </Link>
-            <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition">
+            </a>
+            <a 
+              href="#emergency" 
+              onClick={(e) => {
+                e.preventDefault();
+                const event = new CustomEvent('setClinicTab', { detail: 'emergency' });
+                document.dispatchEvent(event);
+                document.querySelector('#clinics')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition cursor-pointer"
+            >
               Emergência
-            </Link>
-            <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition">
+            </a>
+            <a 
+              href="#favorites" 
+              onClick={(e) => {
+                e.preventDefault();
+                const event = new CustomEvent('setClinicTab', { detail: 'favorites' });
+                document.dispatchEvent(event);
+                document.querySelector('#clinics')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition cursor-pointer"
+            >
               Favoritos
-            </Link>
+            </a>
           </nav>
 
           {/* User Actions */}

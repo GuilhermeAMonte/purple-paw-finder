@@ -9,7 +9,7 @@ const SearchSection = () => {
   const [specialty, setSpecialty] = useState('');
 
   return (
-    <section className="relative min-h-[600px] flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+    <section id="search" className="relative min-h-[600px] flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/60 to-background/80"></div>
       
       <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">

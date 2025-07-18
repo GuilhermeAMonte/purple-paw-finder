@@ -4,6 +4,7 @@ import { Star, MapPin, Phone, Heart, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
+import { useFavorites } from '@/contexts/FavoritesContext';
 
 interface ClinicCardProps {
   id?: string;
@@ -16,6 +17,7 @@ interface ClinicCardProps {
   isOpen: boolean;
   image: string;
   emergency?: boolean;
+  phone?: string;
 }
 
 const ClinicCard: React.FC<ClinicCardProps> = ({
@@ -29,16 +31,33 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
   isOpen,
   image,
   emergency = false,
+  phone,
 }) => {
   const navigate = useNavigate();
+  const { toggleFavorite, isFavorite } = useFavorites();
 
   const handleViewDetails = () => {
     navigate(`/clinic/${id}`);
     window.scrollTo(0, 0);
   };
 
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleFavorite(id);
+  };
+
+  const handlePhoneClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (phone) {
+      window.open(`tel:${phone}`, '_self');
+    }
+  };
+
   return (
-    <div className="bg-card rounded-2xl apple-shadow hover-lift smooth-transition border border-border/40 overflow-hidden cursor-pointer group">
+    <div 
+      onClick={handleViewDetails}
+      className="bg-card rounded-2xl apple-shadow hover-lift smooth-transition border border-border/40 overflow-hidden cursor-pointer group"
+    >
       {/* Image */}
       <div className="relative h-48 bg-gradient-to-br from-muted/50 to-muted/20">
         <div className="absolute inset-0 flex items-center justify-center">
@@ -71,9 +90,12 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
         <Button
           variant="ghost"
           size="sm"
-          className="absolute top-4 right-4 w-9 h-9 p-0 glass-effect rounded-full hover:bg-background/80 smooth-transition"
+          onClick={handleFavoriteClick}
+          className={`absolute top-4 right-4 w-9 h-9 p-0 glass-effect rounded-full hover:bg-background/80 smooth-transition ${
+            isFavorite(id) ? 'text-red-500' : 'text-muted-foreground'
+          }`}
         >
-          <Heart className="w-4 h-4 text-muted-foreground" />
+          <Heart className={`w-4 h-4 ${isFavorite(id) ? 'fill-current' : ''}`} />
         </Button>
       </div>
 
@@ -116,18 +138,24 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
         {/* Actions */}
         <div className="flex gap-3">
           <Button 
-            onClick={handleViewDetails}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewDetails();
+            }}
             className="flex-1 bg-foreground text-background hover:bg-foreground/90 rounded-xl smooth-transition font-medium"
           >
             Ver detalhes
           </Button>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            className="w-12 h-12 border-border/50 rounded-xl hover:border-foreground smooth-transition"
-          >
-            <Phone className="w-4 h-4" />
-          </Button>
+          {phone && (
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handlePhoneClick}
+              className="w-12 h-12 border-border/50 rounded-xl hover:border-foreground smooth-transition"
+            >
+              <Phone className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>
