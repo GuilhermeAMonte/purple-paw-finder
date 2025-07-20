@@ -12,6 +12,8 @@ import Register from "./pages/Register";
 import ClinicDetails from "./pages/ClinicDetails";
 import CreateTicket from "./pages/CreateTicket";
 import Profile from "./pages/Profile";
+import ClinicSetup from "./pages/ClinicSetup";
+import ClinicDashboard from "./pages/ClinicDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +31,8 @@ const App = () => (
               <Route path="/clinic/:id" element={<ClinicDetails />} />
               <Route path="/clinic/:id/create-ticket" element={<CreateTicket />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/clinic-setup" element={<ClinicSetup />} />
+              <Route path="/clinic-dashboard" element={<ClinicDashboard />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

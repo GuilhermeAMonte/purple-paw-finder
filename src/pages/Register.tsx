@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, Heart, ArrowLeft, Check, X } from 'lucide-react';
+import { Eye, EyeOff, Heart, ArrowLeft, Check, X, User, Building2 } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -16,6 +17,7 @@ const Register = () => {
     password: '',
     confirmPassword: ''
   });
+  const [userType, setUserType] = useState<'client' | 'clinic'>('client');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -89,7 +91,7 @@ const Register = () => {
     }
 
     try {
-      await register(formData.name, formData.email, formData.password);
+      await register(formData.name, formData.email, formData.password, userType);
       
       toast({
         title: "Sucesso!",
@@ -140,6 +142,28 @@ const Register = () => {
           
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Seleção do tipo de usuário */}
+              <div className="space-y-3">
+                <Label className="text-gray-700">Tipo de conta</Label>
+                <RadioGroup value={userType} onValueChange={(value: 'client' | 'clinic') => setUserType(value)} className="flex space-x-4">
+                  <div className="flex items-center space-x-2 border rounded-lg p-4 flex-1 cursor-pointer hover:bg-purple-50" onClick={() => setUserType('client')}>
+                    <RadioGroupItem value="client" id="client" />
+                    <User className="w-5 h-5 text-purple-600" />
+                    <div className="flex-1">
+                      <Label htmlFor="client" className="cursor-pointer font-medium">Cliente</Label>
+                      <p className="text-xs text-gray-500">Buscar clínicas veterinárias</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 border rounded-lg p-4 flex-1 cursor-pointer hover:bg-purple-50" onClick={() => setUserType('clinic')}>
+                    <RadioGroupItem value="clinic" id="clinic" />
+                    <Building2 className="w-5 h-5 text-purple-600" />
+                    <div className="flex-1">
+                      <Label htmlFor="clinic" className="cursor-pointer font-medium">Clínica</Label>
+                      <p className="text-xs text-gray-500">Gerenciar clínica veterinária</p>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-gray-700">
                   Nome completo

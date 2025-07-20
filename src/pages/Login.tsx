@@ -53,8 +53,15 @@ const Login = () => {
         description: "Login realizado com sucesso.",
       });
       
-      // Redirecionar para a página principal
-      navigate('/');
+      // Redirecionar baseado no tipo de usuário
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      if (userData.userType === 'clinic' && !userData.isProfileComplete) {
+        navigate('/clinic-setup');
+      } else if (userData.userType === 'clinic') {
+        navigate('/clinic-dashboard');
+      } else {
+        navigate('/');
+      }
     } catch (error: any) {
       toast({
         title: "Erro",

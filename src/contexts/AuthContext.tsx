@@ -5,14 +5,17 @@ interface User {
   id: string;
   name: string;
   email: string;
+  userType: 'client' | 'clinic';
+  isProfileComplete?: boolean;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, userType: 'client' | 'clinic') => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
+  updateUserProfile: (profileData: any) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,7 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const register = async (name: string, email: string, password: string): Promise<boolean> => {
+  const register = async (name: string, email: string, password: string, userType: 'client' | 'clinic'): Promise<boolean> => {
     try {
       // Simular delay de API
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -52,7 +55,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: Date.now().toString(),
         name,
         email,
-        password // Em produção, a senha seria hasheada
+        password, // Em produção, a senha seria hasheada
+        userType,
+        isProfileComplete: userType === 'client' // Clientes têm perfil completo por padrão
       };
 
       // Salvar usuário na "base de dados" (localStorage)
@@ -82,7 +87,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userWithoutPassword = {
         id: foundUser.id,
         name: foundUser.name,
-        email: foundUser.email
+        email: foundUser.email,
+        userType: foundUser.userType,
+        isProfileComplete: foundUser.isProfileComplete
       };
 
       setUser(userWithoutPassword);
@@ -99,12 +106,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('user');
   };
 
+  const updateUserProfile = async (profileData: any) => {
+    if (!user) return;
+
+    // Atualizar usuário no localStorage
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const userIndex = users.findIndex((u: any) => u.id === user.id);
+    
+    if (userIndex !== -1) {
+      users[userIndex] = { ...users[userIndex], ...profileData, isProfileComplete: true };
+      localStorage.setItem('users', JSON.stringify(users));
+      
+      // Atualizar usuário atual
+      const updatedUser = { ...user, ...profileData, isProfileComplete: true };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+  };
+
   const value = {
     user,
     login,
     register,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    updateUserProfile
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
