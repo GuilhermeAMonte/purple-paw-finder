@@ -66,6 +66,21 @@ const CreateTicket = () => {
 
   // Pré-preencher dados quando um pet é selecionado
   const handlePetSelection = (petId: string) => {
+    if (petId === "manual") {
+      setSelectedPet(null);
+      setFormData(prev => ({
+        ...prev,
+        petName: '',
+        petSpecies: '',
+        petBreed: '',
+        petAge: '',
+        petWeight: '',
+        petColor: '',
+        petNotes: ''
+      }));
+      return;
+    }
+    
     const pet = pets.find(p => p.id === petId);
     if (pet) {
       setSelectedPet(pet);
@@ -203,7 +218,7 @@ const CreateTicket = () => {
                     <SelectValue placeholder="Escolha um pet ou preencha manualmente" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Preencher manualmente</SelectItem>
+                    <SelectItem value="manual">Preencher manualmente</SelectItem>
                     {pets.map(pet => (
                       <SelectItem key={pet.id} value={pet.id}>
                         {pet.name} - {pet.species === 'dog' ? 'Cachorro' : pet.species === 'cat' ? 'Gato' : pet.species}
