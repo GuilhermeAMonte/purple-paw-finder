@@ -8,9 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Heart, Phone, Users, MessageSquare, Settings, LogOut, Clock, MapPin, Calendar, Send, Edit3, UserCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 // Mock data para demonstração
 const mockClients = [
@@ -46,6 +49,60 @@ const specialties = [
   'Exames Laboratoriais', 'Ultrassonografia', 'Radiologia', 'Fisioterapia', 'Odontologia Veterinária'
 ];
 
+// Mock data para agendamentos
+const mockAppointments = [
+  {
+    id: 1,
+    date: '2024-01-15',
+    time: '09:00',
+    client: 'Maria Silva',
+    pet: 'Rex (Cão)',
+    doctor: 'Dr. João Santos',
+    specialty: 'Clínica Geral',
+    status: 'Confirmado'
+  },
+  {
+    id: 2,
+    date: '2024-01-15',
+    time: '10:30',
+    client: 'Ana Costa',
+    pet: 'Mimi (Gato)',
+    doctor: 'Dra. Carla Lima',
+    specialty: 'Vacinação',
+    status: 'Confirmado'
+  },
+  {
+    id: 3,
+    date: '2024-01-16',
+    time: '14:00',
+    client: 'Pedro Oliveira',
+    pet: 'Bolt (Cão)',
+    doctor: 'Dr. João Santos',
+    specialty: 'Cirurgia',
+    status: 'Pendente'
+  },
+  {
+    id: 4,
+    date: '2024-01-16',
+    time: '15:30',
+    client: 'Lucia Fernandes',
+    pet: 'Whiskers (Gato)',
+    doctor: 'Dra. Maria Souza',
+    specialty: 'Dermatologia',
+    status: 'Confirmado'
+  },
+  {
+    id: 5,
+    date: '2024-01-17',
+    time: '08:30',
+    client: 'Roberto Silva',
+    pet: 'Luna (Cão)',
+    doctor: 'Dr. João Santos',
+    specialty: 'Exames Laboratoriais',
+    status: 'Confirmado'
+  }
+];
+
 const ClinicDashboard = () => {
   const { user, logout, updateUserProfile } = useAuth();
   const [selectedClient, setSelectedClient] = useState(mockClients[0]);
@@ -53,6 +110,7 @@ const ClinicDashboard = () => {
   const [replyMessage, setReplyMessage] = useState('');
   const [messages, setMessages] = useState<{[key: number]: any[]}>({});
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [profileData, setProfileData] = useState({
     clinicName: (user as any)?.clinicName || '',
     phone: (user as any)?.phone || '',
@@ -406,21 +464,132 @@ const ClinicDashboard = () => {
         )}
 
         {currentSection === 'calendario' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Calendar className="w-5 h-5 text-purple-600" />
-                <span>Calendário</span>
-              </CardTitle>
-              <CardDescription>Visualize seus agendamentos</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="w-12 h-12 mx-auto mb-2 text-purple-300" />
-                <p>Funcionalidade do calendário em desenvolvimento</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Calendário */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Calendar className="w-5 h-5 text-purple-600" />
+                  <span>Calendário</span>
+                </CardTitle>
+                <CardDescription>Selecione uma data para ver os agendamentos</CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-center">
+                <CalendarComponent
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  locale={ptBR}
+                  className="rounded-md border"
+                  modifiers={{
+                    hasAppointments: (date) => 
+                      mockAppointments.some(apt => apt.date === format(date, 'yyyy-MM-dd'))
+                  }}
+                  modifiersStyles={{
+                    hasAppointments: {
+                      backgroundColor: 'hsl(var(--primary))',
+                      color: 'white',
+                      fontWeight: 'bold'
+                    }
+                  }}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Agenda do Dia */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Clock className="w-5 h-5 text-purple-600" />
+                  <span>
+                    Agenda - {selectedDate ? format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 'Selecione uma data'}
+                  </span>
+                </CardTitle>
+                <CardDescription>
+                  {selectedDate && mockAppointments.filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd')).length > 0
+                    ? `${mockAppointments.filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd')).length} agendamento(s) para este dia`
+                    : 'Nenhum agendamento para este dia'
+                  }
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {selectedDate ? (
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {mockAppointments
+                      .filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd'))
+                      .sort((a, b) => a.time.localeCompare(b.time))
+                      .map((appointment) => (
+                        <div key={appointment.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center space-x-2">
+                              <div className="text-lg font-bold text-purple-600">
+                                {appointment.time}
+                              </div>
+                              <Badge 
+                                variant={appointment.status === 'Confirmado' ? 'default' : 'secondary'}
+                                className="text-xs"
+                              >
+                                {appointment.status}
+                              </Badge>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <div className="flex items-center space-x-2">
+                              <Users className="w-4 h-4 text-gray-500" />
+                              <span className="font-medium">{appointment.client}</span>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                              <Heart className="w-4 h-4 text-gray-500" />
+                              <span className="text-sm text-gray-600">{appointment.pet}</span>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                              <UserCheck className="w-4 h-4 text-gray-500" />
+                              <span className="text-sm text-gray-600">{appointment.doctor}</span>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                              <Calendar className="w-4 h-4 text-gray-500" />
+                              <span className="text-sm text-gray-600">{appointment.specialty}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex space-x-2 mt-3">
+                            <Button size="sm" variant="outline" className="text-xs">
+                              Editar
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-xs">
+                              Cancelar
+                            </Button>
+                            <Button size="sm" className="text-xs">
+                              Confirmar
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    }
+                    
+                    {mockAppointments.filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd')).length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <Calendar className="w-12 h-12 mx-auto mb-2 text-purple-300" />
+                        <p>Nenhum agendamento para este dia</p>
+                        <Button variant="outline" className="mt-4">
+                          Criar Agendamento
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Calendar className="w-12 h-12 mx-auto mb-2 text-purple-300" />
+                    <p>Selecione uma data no calendário para ver os agendamentos</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {currentSection === 'pacientes' && (
