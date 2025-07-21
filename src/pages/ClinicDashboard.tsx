@@ -111,6 +111,13 @@ const ClinicDashboard = () => {
   const [messages, setMessages] = useState<{[key: number]: any[]}>({});
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const [scheduleData, setScheduleData] = useState({
+    date: '',
+    time: '',
+    specialty: ''
+  });
+  const [appointments, setAppointments] = useState(mockAppointments);
   const [profileData, setProfileData] = useState({
     clinicName: (user as any)?.clinicName || '',
     phone: (user as any)?.phone || '',
@@ -125,6 +132,12 @@ const ClinicDashboard = () => {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Horários disponíveis
+  const availableTimes = [
+    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
+  ];
 
   const handleLogout = () => {
     logout();
@@ -153,6 +166,56 @@ const ClinicDashboard = () => {
     });
   };
 
+  const handleScheduleAppointment = () => {
+    if (!scheduleData.date || !scheduleData.time || !scheduleData.specialty) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newAppointment = {
+      id: Date.now(),
+      date: scheduleData.date,
+      time: scheduleData.time,
+      client: selectedClient.name,
+      pet: selectedClient.pet,
+      doctor: 'Dr. João Santos', // Pode ser selecionado dinamicamente
+      specialty: scheduleData.specialty,
+      status: 'Confirmado'
+    };
+
+    setAppointments(prev => [...prev, newAppointment]);
+    setIsScheduleDialogOpen(false);
+    setScheduleData({ date: '', time: '', specialty: '' });
+    
+    toast({
+      title: "Agendamento criado",
+      description: `Consulta agendada para ${selectedClient.name} em ${format(new Date(scheduleData.date), "dd/MM/yyyy")} às ${scheduleData.time}.`,
+    });
+  };
+
+  const getAvailableTimesForDate = (date: string) => {
+    const bookedTimes = appointments
+      .filter(apt => apt.date === date)
+      .map(apt => apt.time);
+    return availableTimes.filter(time => !bookedTimes.includes(time));
+  };
+
+  const getTodayAppointments = () => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    return appointments.filter(apt => apt.date === today);
+  };
+
+  const menuItems = [
+    { id: 'contatos', label: 'Contatos', icon: MessageSquare },
+    { id: 'calendario', label: 'Calendário', icon: Calendar },
+    { id: 'pacientes', label: 'Pacientes Agendados', icon: UserCheck },
+    { id: 'horarios', label: 'Horários', icon: Clock }
+  ];
+
   const handleProfileUpdate = async () => {
     try {
       await updateUserProfile(profileData);
@@ -169,13 +232,6 @@ const ClinicDashboard = () => {
       });
     }
   };
-
-  const menuItems = [
-    { id: 'contatos', label: 'Contatos', icon: MessageSquare },
-    { id: 'calendario', label: 'Calendário', icon: Calendar },
-    { id: 'pacientes', label: 'Pacientes Agendados', icon: UserCheck },
-    { id: 'horarios', label: 'Horários', icon: Clock }
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-purple-light">
@@ -456,6 +512,13 @@ const ClinicDashboard = () => {
                       <Phone className="w-4 h-4 mr-2" />
                       Ligar para {selectedClient.name}
                     </Button>
+                    <Button 
+                      onClick={() => setIsScheduleDialogOpen(true)}
+                      className="w-full bg-purple-600 hover:bg-purple-700"
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Agendar Consulta
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -480,10 +543,10 @@ const ClinicDashboard = () => {
                   selected={selectedDate}
                   onSelect={setSelectedDate}
                   locale={ptBR}
-                  className="rounded-md border"
+                  className="rounded-md border pointer-events-auto"
                   modifiers={{
                     hasAppointments: (date) => 
-                      mockAppointments.some(apt => apt.date === format(date, 'yyyy-MM-dd'))
+                      appointments.some(apt => apt.date === format(date, 'yyyy-MM-dd'))
                   }}
                   modifiersStyles={{
                     hasAppointments: {
@@ -506,8 +569,8 @@ const ClinicDashboard = () => {
                   </span>
                 </CardTitle>
                 <CardDescription>
-                  {selectedDate && mockAppointments.filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd')).length > 0
-                    ? `${mockAppointments.filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd')).length} agendamento(s) para este dia`
+                  {selectedDate && appointments.filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd')).length > 0
+                    ? `${appointments.filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd')).length} agendamento(s) para este dia`
                     : 'Nenhum agendamento para este dia'
                   }
                 </CardDescription>
@@ -515,7 +578,7 @@ const ClinicDashboard = () => {
               <CardContent>
                 {selectedDate ? (
                   <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {mockAppointments
+                    {appointments
                       .filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd'))
                       .sort((a, b) => a.time.localeCompare(b.time))
                       .map((appointment) => (
@@ -571,13 +634,10 @@ const ClinicDashboard = () => {
                       ))
                     }
                     
-                    {mockAppointments.filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd')).length === 0 && (
+                    {appointments.filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd')).length === 0 && (
                       <div className="text-center py-8 text-gray-500">
                         <Calendar className="w-12 h-12 mx-auto mb-2 text-purple-300" />
                         <p>Nenhum agendamento para este dia</p>
-                        <Button variant="outline" className="mt-4">
-                          Criar Agendamento
-                        </Button>
                       </div>
                     )}
                   </div>
@@ -597,15 +657,58 @@ const ClinicDashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <UserCheck className="w-5 h-5 text-purple-600" />
-                <span>Pacientes Agendados</span>
+                <span>Pacientes Agendados Hoje</span>
               </CardTitle>
-              <CardDescription>Veja os pacientes com consultas marcadas</CardDescription>
+              <CardDescription>
+                {format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })} - {getTodayAppointments().length} paciente(s)
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-gray-500">
-                <UserCheck className="w-12 h-12 mx-auto mb-2 text-purple-300" />
-                <p>Lista de pacientes agendados em desenvolvimento</p>
-              </div>
+              {getTodayAppointments().length > 0 ? (
+                <div className="space-y-4">
+                  {getTodayAppointments()
+                    .sort((a, b) => a.time.localeCompare(b.time))
+                    .map((appointment) => (
+                      <div key={appointment.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center space-x-2">
+                            <div className="text-lg font-bold text-purple-600">
+                              {appointment.time}
+                            </div>
+                            <Badge 
+                              variant={appointment.status === 'Confirmado' ? 'default' : 'secondary'}
+                            >
+                              {appointment.status}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="font-medium text-gray-900">{appointment.client}</p>
+                            <p className="text-sm text-gray-600">{appointment.pet}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">{appointment.doctor}</p>
+                            <p className="text-sm text-gray-600">{appointment.specialty}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex space-x-2 mt-3">
+                          <Button size="sm" variant="outline">Editar</Button>
+                          <Button size="sm" variant="outline">Cancelar</Button>
+                          <Button size="sm">Atender</Button>
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <UserCheck className="w-12 h-12 mx-auto mb-2 text-purple-300" />
+                  <p>Nenhum paciente agendado para hoje</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -615,18 +718,115 @@ const ClinicDashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Clock className="w-5 h-5 text-purple-600" />
-                <span>Horários</span>
+                <span>Horários Disponíveis</span>
               </CardTitle>
-              <CardDescription>Configure seus horários de atendimento</CardDescription>
+              <CardDescription>Horários disponíveis para agendamento hoje</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-gray-500">
-                <Clock className="w-12 h-12 mx-auto mb-2 text-purple-300" />
-                <p>Configuração de horários em desenvolvimento</p>
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+                {getAvailableTimesForDate(format(new Date(), 'yyyy-MM-dd')).map((time) => (
+                  <div
+                    key={time}
+                    className="p-3 text-center border rounded-lg bg-green-50 border-green-200 text-green-700"
+                  >
+                    <div className="font-medium">{time}</div>
+                    <div className="text-xs mt-1">Disponível</div>
+                  </div>
+                ))}
+                
+                {availableTimes
+                  .filter(time => !getAvailableTimesForDate(format(new Date(), 'yyyy-MM-dd')).includes(time))
+                  .map((time) => (
+                    <div
+                      key={time}
+                      className="p-3 text-center border rounded-lg bg-red-50 border-red-200 text-red-700"
+                    >
+                      <div className="font-medium">{time}</div>
+                      <div className="text-xs mt-1">Ocupado</div>
+                    </div>
+                  ))
+                }
               </div>
+              
+              {getAvailableTimesForDate(format(new Date(), 'yyyy-MM-dd')).length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <Clock className="w-12 h-12 mx-auto mb-2 text-purple-300" />
+                  <p>Todos os horários estão ocupados hoje</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
+
+        {/* Dialog para Agendamento */}
+        <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Agendar Consulta</DialogTitle>
+              <DialogDescription>
+                Agendar consulta para {selectedClient.name} - {selectedClient.pet}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="date">Data</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={scheduleData.date}
+                  onChange={(e) => setScheduleData({...scheduleData, date: e.target.value})}
+                  min={format(new Date(), 'yyyy-MM-dd')}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="time">Horário</Label>
+                <select
+                  id="time"
+                  value={scheduleData.time}
+                  onChange={(e) => setScheduleData({...scheduleData, time: e.target.value})}
+                  className="w-full p-2 border rounded-md"
+                >
+                  <option value="">Selecione um horário</option>
+                  {scheduleData.date && getAvailableTimesForDate(scheduleData.date).map((time) => (
+                    <option key={time} value={time}>{time}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <Label htmlFor="specialty">Especialidade</Label>
+                <select
+                  id="specialty"
+                  value={scheduleData.specialty}
+                  onChange={(e) => setScheduleData({...scheduleData, specialty: e.target.value})}
+                  className="w-full p-2 border rounded-md"
+                >
+                  <option value="">Selecione uma especialidade</option>
+                  {specialties.map((specialty) => (
+                    <option key={specialty} value={specialty}>{specialty}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="flex space-x-2 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsScheduleDialogOpen(false)}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleScheduleAppointment}
+                  className="flex-1"
+                >
+                  Agendar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
