@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Heart, Phone, Users, MessageSquare, Settings, LogOut, Clock, MapPin, Calendar, Send, Edit3, UserCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -781,32 +782,30 @@ const ClinicDashboard = () => {
               
               <div>
                 <Label htmlFor="time">Horário</Label>
-                <select
-                  id="time"
-                  value={scheduleData.time}
-                  onChange={(e) => setScheduleData({...scheduleData, time: e.target.value})}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="">Selecione um horário</option>
-                  {scheduleData.date && getAvailableTimesForDate(scheduleData.date).map((time) => (
-                    <option key={time} value={time}>{time}</option>
-                  ))}
-                </select>
+                <Select value={scheduleData.time} onValueChange={(value) => setScheduleData({...scheduleData, time: value})}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione um horário" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {scheduleData.date && getAvailableTimesForDate(scheduleData.date).map((time) => (
+                      <SelectItem key={time} value={time}>{time}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               
               <div>
                 <Label htmlFor="specialty">Especialidade</Label>
-                <select
-                  id="specialty"
-                  value={scheduleData.specialty}
-                  onChange={(e) => setScheduleData({...scheduleData, specialty: e.target.value})}
-                  className="w-full p-2 border rounded-md"
-                >
-                  <option value="">Selecione uma especialidade</option>
-                  {specialties.map((specialty) => (
-                    <option key={specialty} value={specialty}>{specialty}</option>
-                  ))}
-                </select>
+                <Select value={scheduleData.specialty} onValueChange={(value) => setScheduleData({...scheduleData, specialty: value})}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione uma especialidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {specialties.map((specialty) => (
+                      <SelectItem key={specialty} value={specialty}>{specialty}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               
               <div className="flex space-x-2 pt-4">
