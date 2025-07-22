@@ -54,25 +54,6 @@ const SearchSection = () => {
             Buscar clínicas veterinárias
           </Button>
         </div>
-
-        <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-8 animate-fade-in">
-          <div className="text-center">
-            <div className="text-3xl font-semibold text-foreground mb-2">500+</div>
-            <div className="text-sm text-muted-foreground font-light">Clínicas parceiras</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-semibold text-foreground mb-2">24h</div>
-            <div className="text-sm text-muted-foreground font-light">Atendimento disponível</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-semibold text-foreground mb-2">10k+</div>
-            <div className="text-sm text-muted-foreground font-light">Pets atendidos</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-semibold text-foreground mb-2">4.8★</div>
-            <div className="text-sm text-muted-foreground font-light">Avaliação média</div>
-          </div>
-        </div>
       </div>
     </section>
   );

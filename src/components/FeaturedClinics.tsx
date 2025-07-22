@@ -1,12 +1,28 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Clock, MessageSquare, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import ClinicCard from './ClinicCard';
 import { useFavorites } from '@/contexts/FavoritesContext';
 
 const FeaturedClinics = () => {
   const { favorites } = useFavorites();
-  const [activeTab, setActiveTab] = useState<'all' | 'favorites' | 'emergency'>('all');
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'all' | 'favorites' | 'emergency' | 'tickets'>('all');
+  const [userTickets, setUserTickets] = useState<any[]>([]);
+
+  // Load user tickets from localStorage
+  useEffect(() => {
+    if (user?.id) {
+      const tickets = JSON.parse(localStorage.getItem(`tickets_${user.id}`) || '[]');
+      setUserTickets(tickets);
+    }
+  }, [user]);
 
   useEffect(() => {
     const handleSetTab = (event: CustomEvent) => {
@@ -103,6 +119,9 @@ const FeaturedClinics = () => {
         return clinics.filter(clinic => favorites.includes(clinic.id));
       case 'emergency':
         return clinics.filter(clinic => clinic.emergency);
+      case 'tickets':
+        // For tickets tab, we'll show a different view
+        return [];
       default:
         return clinics;
     }
@@ -133,6 +152,13 @@ const FeaturedClinics = () => {
               Todas
             </Button>
             <Button
+              variant={activeTab === 'tickets' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('tickets')}
+              className="rounded-full px-6 py-2 text-sm font-medium"
+            >
+              Tickets
+            </Button>
+            <Button
               variant={activeTab === 'favorites' ? 'default' : 'ghost'}
               onClick={() => setActiveTab('favorites')}
               className="rounded-full px-6 py-2 text-sm font-medium"
@@ -150,7 +176,49 @@ const FeaturedClinics = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16 animate-slide-up">
-          {filteredClinics.length > 0 ? (
+          {activeTab === 'tickets' ? (
+            userTickets.length > 0 ? (
+              userTickets.map((ticket) => (
+                <Card key={ticket.id} className="cursor-pointer hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{ticket.title}</CardTitle>
+                      <Badge variant={ticket.status === 'open' ? 'default' : ticket.status === 'in_progress' ? 'secondary' : 'outline'}>
+                        {ticket.status === 'open' ? 'Aberto' : ticket.status === 'in_progress' ? 'Em Andamento' : 'Fechado'}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <User className="w-4 h-4 mr-2" />
+                        {ticket.clinicName || 'Clínica Veterinária Pet Care'}
+                      </div>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Clock className="w-4 h-4 mr-2" />
+                        {new Date(ticket.createdAt).toLocaleDateString('pt-BR')}
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {ticket.description}
+                      </p>
+                      <Button 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => navigate(`/chat/${ticket.id}`)}
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Conversar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground text-lg">Você ainda não possui tickets abertos.</p>
+              </div>
+            )
+          ) : filteredClinics.length > 0 ? (
             filteredClinics.map((clinic, index) => (
               <ClinicCard
                 key={clinic.id}

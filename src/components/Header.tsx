@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Heart, User, LogOut, Settings } from 'lucide-react';
+import { PawPrint, User, LogOut, Settings, Ticket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +25,7 @@ const Header = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-3 smooth-transition hover:opacity-80">
             <div className="w-9 h-9 bg-foreground rounded-full flex items-center justify-center">
-              <Heart className="w-5 h-5 text-background" />
+              <PawPrint className="w-5 h-5 text-background" />
             </div>
             <h1 className="text-xl font-semibold text-foreground">
               Paw Connect
@@ -55,6 +55,18 @@ const Header = () => {
               className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition cursor-pointer"
             >
               Emergência
+            </a>
+            <a 
+              href="#tickets" 
+              onClick={(e) => {
+                e.preventDefault();
+                const event = new CustomEvent('setClinicTab', { detail: 'tickets' });
+                document.dispatchEvent(event);
+                document.querySelector('#clinics')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition cursor-pointer"
+            >
+              Tickets
             </a>
             <a 
               href="#favorites" 
