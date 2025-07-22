@@ -10,6 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import BreedSelector from '@/components/BreedSelector';
+import { breedsBySpecies } from '@/data/breeds';
 
 interface Pet {
   id: string;
@@ -109,6 +111,26 @@ const CreateTicket = () => {
     }
   };
 
+  // Função para converter peso para kg
+  const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let weight = e.target.value;
+    // Remove caracteres não numéricos exceto vírgula e ponto
+    weight = weight.replace(/[^\d.,]/g, '');
+    
+    // Se contém apenas números, adiciona kg automaticamente
+    if (weight && !weight.includes('kg') && !weight.includes('g')) {
+      const numericValue = parseFloat(weight.replace(',', '.'));
+      if (!isNaN(numericValue)) {
+        weight = numericValue + 'kg';
+      }
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      petWeight: weight
+    }));
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -167,13 +189,17 @@ const CreateTicket = () => {
       return;
     }
 
+    // Gerar ID único para o ticket
+    const ticketId = Date.now().toString();
+
     // Aqui seria feita a requisição para a API
     toast({
       title: "Chamado criado com sucesso!",
       description: "Sua solicitação foi enviada para a clínica veterinária.",
     });
 
-    navigate(`/clinic/${id}`);
+    // Redirecionar para o chat
+    navigate(`/chat/${ticketId}`);
   };
 
   const needsReferral = formData.service && formData.service !== "Clínica Geral";
@@ -310,32 +336,36 @@ const CreateTicket = () => {
                         <Label htmlFor="petSpecies" className="text-sm font-medium text-foreground mb-2 block">
                           Espécie
                         </Label>
-                        <Input
-                          id="petSpecies"
-                          name="petSpecies"
-                          value={formData.petSpecies}
-                          onChange={handleInputChange}
-                          placeholder="Ex: Cachorro, Gato"
-                          className="h-10 rounded-xl border-border/50"
-                          required
-                        />
+                        <Select value={formData.petSpecies} onValueChange={(value) => setFormData(prev => ({ ...prev, petSpecies: value, petBreed: '' }))}>
+                          <SelectTrigger className="h-10 rounded-xl border-border/50">
+                            <SelectValue placeholder="Selecione a espécie" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Cachorro">Cachorro</SelectItem>
+                            <SelectItem value="Gato">Gato</SelectItem>
+                            <SelectItem value="Pássaro">Pássaro</SelectItem>
+                            <SelectItem value="Coelho">Coelho</SelectItem>
+                            <SelectItem value="Hamster">Hamster</SelectItem>
+                            <SelectItem value="Peixe">Peixe</SelectItem>
+                            <SelectItem value="Réptil">Réptil</SelectItem>
+                            <SelectItem value="Outro">Outro</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <Label htmlFor="petBreed" className="text-sm font-medium text-foreground mb-2 block">
-                          Raça
-                        </Label>
-                        <Input
-                          id="petBreed"
-                          name="petBreed"
-                          value={formData.petBreed}
-                          onChange={handleInputChange}
-                          placeholder="Ex: Labrador"
-                          className="h-10 rounded-xl border-border/50"
-                        />
-                      </div>
+                       <div>
+                         <Label htmlFor="petBreed" className="text-sm font-medium text-foreground mb-2 block">
+                           Raça
+                         </Label>
+                         <BreedSelector
+                           species={formData.petSpecies === 'Cachorro' ? 'dog' : formData.petSpecies === 'Gato' ? 'cat' : formData.petSpecies.toLowerCase()}
+                           value={formData.petBreed}
+                           onChange={(value) => setFormData(prev => ({ ...prev, petBreed: value }))}
+                           disabled={!formData.petSpecies}
+                         />
+                       </div>
                       <div>
                         <Label htmlFor="petAge" className="text-sm font-medium text-foreground mb-2 block">
                           Idade
@@ -353,14 +383,14 @@ const CreateTicket = () => {
                         <Label htmlFor="petWeight" className="text-sm font-medium text-foreground mb-2 block">
                           Peso
                         </Label>
-                        <Input
-                          id="petWeight"
-                          name="petWeight"
-                          value={formData.petWeight}
-                          onChange={handleInputChange}
-                          placeholder="Ex: 15kg"
-                          className="h-10 rounded-xl border-border/50"
-                        />
+                         <Input
+                           id="petWeight"
+                           name="petWeight"
+                           value={formData.petWeight}
+                           onChange={handleWeightChange}
+                           placeholder="Ex: 15"
+                           className="h-10 rounded-xl border-border/50"
+                         />
                       </div>
                     </div>
 

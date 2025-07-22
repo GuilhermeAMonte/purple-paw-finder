@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ClinicDetails from "./pages/ClinicDetails";
 import CreateTicket from "./pages/CreateTicket";
+import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
 import ClinicSetup from "./pages/ClinicSetup";
 import ClinicDashboard from "./pages/ClinicDashboard";
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/clinic/:id" element={<ClinicDetails />} />
               <Route path="/clinic/:id/create-ticket" element={<CreateTicket />} />
+              <Route path="/chat/:ticketId" element={<Chat />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/clinic-setup" element={<ClinicSetup />} />
               <Route path="/clinic-dashboard" element={<ClinicDashboard />} />
