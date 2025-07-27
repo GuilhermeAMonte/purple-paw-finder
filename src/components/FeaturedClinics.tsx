@@ -18,10 +18,11 @@ const FeaturedClinics = () => {
 
   // Load user tickets from localStorage
   useEffect(() => {
-    if (user?.id) {
-      const tickets = JSON.parse(localStorage.getItem(`tickets_${user.id}`) || '[]');
-      setUserTickets(tickets);
-    }
+    // Busca tickets globais (todos do usuário logado)
+    const tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
+    // Se quiser filtrar por usuário, descomente a linha abaixo e salve o id do usuário no ticket
+    // const filtered = user?.id ? tickets.filter(t => t.userId === user.id) : tickets;
+    setUserTickets(tickets);
   }, [user]);
 
   useEffect(() => {
@@ -132,14 +133,27 @@ const FeaturedClinics = () => {
   return (
     <section id="clinics" className="py-24 bg-background">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center mb-16 animate-fade-in">
-          <h2 className="text-4xl md:text-5xl font-semibold text-foreground mb-6 leading-tight">
-            Clínicas próximas a você
-          </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Descubra os melhores cuidados veterinários na sua região com avaliações autênticas de outros tutores
-          </p>
-        </div>
+
+        {/* Título e subtítulo só nas abas Todas e Emergência */}
+        {(activeTab === 'all' || activeTab === 'emergency') && (
+          <div className="text-center mb-16 animate-fade-in">
+            <h2 className="text-4xl md:text-5xl font-semibold text-foreground mb-6 leading-tight">
+              Clínicas próximas a você
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Descubra os melhores cuidados veterinários na sua região com avaliações autênticas de outros tutores
+            </p>
+          </div>
+        )}
+
+        {/* Título Meus Chamados só na aba Tickets */}
+        {activeTab === 'tickets' && (
+          <div className="text-center mb-16 animate-fade-in">
+            <h2 className="text-4xl md:text-5xl font-semibold text-foreground mb-6 leading-tight">
+              Meus Chamados
+            </h2>
+          </div>
+        )}
 
         {/* Filter Tabs */}
         <div className="flex justify-center mb-12">

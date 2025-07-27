@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Camera, Save, ArrowLeft, Plus, Trash2, Heart } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import BreedSelector from '@/components/BreedSelector';
 
@@ -29,6 +29,15 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
+  const location = useLocation();
+  // Lê os parâmetros da URL
+  const params = new URLSearchParams(location.search);
+  const initialTab = params.get('tab') || 'personal';
+  const initialAddPet = params.get('add') === '1';
+  const returnTo = params.get('returnTo');
+
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [showAddPet, setShowAddPet] = useState(initialAddPet);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -59,7 +68,6 @@ const Profile = () => {
   );
   
   const [isLoading, setIsLoading] = useState(false);
-  const [showAddPet, setShowAddPet] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -131,7 +139,7 @@ const Profile = () => {
     const updatedPets = [...pets, petWithId];
     setPets(updatedPets);
     localStorage.setItem(`pets_${user?.id}`, JSON.stringify(updatedPets));
-    
+
     setNewPet({
       id: '',
       name: '',
@@ -148,6 +156,11 @@ const Profile = () => {
       title: "Sucesso",
       description: "Pet adicionado com sucesso!",
     });
+
+    // Se veio do fluxo de create-ticket, redireciona de volta com o pet selecionado
+    if (returnTo) {
+      navigate(`${returnTo}?selectedPet=${petWithId.id}`);
+    }
   };
 
   const removePet = (petId: string) => {
@@ -246,7 +259,7 @@ const Profile = () => {
             <CardTitle className="text-xl">Configurações da Conta</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="personal" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="personal">Dados Pessoais</TabsTrigger>
                 <TabsTrigger value="pets">Meus Pets</TabsTrigger>

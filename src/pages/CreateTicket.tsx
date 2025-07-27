@@ -51,7 +51,19 @@ const CreateTicket = () => {
     ownerAddress: localStorage.getItem(`address_${user?.id}`) || ''
   });
   
+
   const [file, setFile] = useState<File | null>(null);
+
+  // Seleciona automaticamente o pet recém-cadastrado se vier de /profile
+  const location = useLocation();
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const selectedPetId = params.get('selectedPet');
+    if (selectedPetId && pets.length > 0) {
+      handlePetSelection(selectedPetId);
+    }
+    // eslint-disable-next-line
+  }, [location.search, pets]);
 
   // Mock data da clínica
   const clinic = {
@@ -200,7 +212,8 @@ const CreateTicket = () => {
       clinicName: clinic.name,
       service: formData.service,
       title: formData.title,
-      createdAt: new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+      createdAt: new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
+      status: 'open',
     });
     toast({
       title: "Chamado criado com sucesso!",
@@ -270,10 +283,7 @@ const CreateTicket = () => {
                       type="button"
                       variant="secondary"
                       className="w-fit"
-                      onClick={() => {
-                        const location = useLocation();
-                        navigate('/profile', { state: { from: location.pathname } });
-                      }}
+                      onClick={() => navigate('/profile?tab=pets&add=1&returnTo=/create-ticket')}
                     >
                       Cadastrar novo pet
                     </Button>
