@@ -70,7 +70,7 @@ const ClinicDetails = () => {
               onClick={() => navigate(`/clinic/${id}/create-ticket`)}
               className="bg-primary text-white hover:bg-primary/90 px-8 py-3 rounded-2xl text-lg font-medium apple-shadow"
             >
-              Abrir Chamado
+              Entrar em contato
             </Button>
           </div>
 

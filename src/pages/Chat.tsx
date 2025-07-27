@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Phone, Video, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Send, Phone, MoreVertical, ShieldAlert, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +24,8 @@ const Chat = () => {
   const { ticketId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
+  // Removed optionsOpen state, Popover will manage its own state
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -123,12 +131,39 @@ const Chat = () => {
             <Button variant="ghost" size="icon">
               <Phone className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="icon">
-              <Video className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <MoreVertical className="w-5 h-5" />
-            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="w-5 h-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-44 p-2">
+                <button
+                  className="flex items-center w-full px-2 py-2 rounded hover:bg-muted text-sm gap-2"
+                  onClick={() => {
+                    toast({
+                      title: 'Denúncia enviada',
+                      description: 'A clínica foi denunciada. Nossa equipe irá analisar o caso.',
+                      variant: 'default',
+                    });
+                  }}
+                >
+                  <ShieldAlert className="w-4 h-4 text-yellow-500" /> Denunciar
+                </button>
+                <button
+                  className="flex items-center w-full px-2 py-2 rounded hover:bg-muted text-sm gap-2 text-red-600"
+                  onClick={() => {
+                    toast({
+                      title: 'Clínica bloqueada',
+                      description: 'Você bloqueou esta clínica. Não receberá mais mensagens deste chat.',
+                      variant: 'destructive',
+                    });
+                  }}
+                >
+                  <Ban className="w-4 h-4" /> Bloquear
+                </button>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </div>

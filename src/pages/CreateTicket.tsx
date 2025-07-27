@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import BreedSelector from '@/components/BreedSelector';
 import { breedsBySpecies } from '@/data/breeds';
+import { getTickets, saveTicket } from '../utils/ticketStorage';
 
 interface Pet {
   id: string;
@@ -192,7 +193,15 @@ const CreateTicket = () => {
     // Gerar ID único para o ticket
     const ticketId = Date.now().toString();
 
-    // Aqui seria feita a requisição para a API
+    // Salvar ticket no localStorage
+    const tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
+    saveTicket({
+      id: ticketId,
+      clinicName: clinic.name,
+      service: formData.service,
+      title: formData.title,
+      createdAt: new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+    });
     toast({
       title: "Chamado criado com sucesso!",
       description: "Sua solicitação foi enviada para a clínica veterinária.",
@@ -253,9 +262,22 @@ const CreateTicket = () => {
                   </SelectContent>
                 </Select>
                 {pets.length === 0 && (
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Nenhum pet cadastrado. Você pode adicionar pets em seu perfil ou preencher manualmente.
-                  </p>
+                  <div className="mt-2 flex flex-col gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      Nenhum pet cadastrado.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-fit"
+                      onClick={() => {
+                        const location = useLocation();
+                        navigate('/profile', { state: { from: location.pathname } });
+                      }}
+                    >
+                      Cadastrar novo pet
+                    </Button>
+                  </div>
                 )}
               </div>
 
