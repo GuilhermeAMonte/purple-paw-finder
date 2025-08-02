@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 interface User {
   id: string;
@@ -7,12 +7,13 @@ interface User {
   email: string;
   userType: 'client' | 'clinic';
   isProfileComplete?: boolean;
+  plan?: 'free' | 'basic' | 'intermediary' | 'experience';
 }
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string, userType: 'client' | 'clinic') => Promise<boolean>;
+  register: (name: string, email: string, password: string, userType: 'client' | 'clinic', plan?: 'free' | 'basic' | 'intermediary' | 'experience') => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
   updateUserProfile: (profileData: any) => Promise<void>;
@@ -39,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const register = async (name: string, email: string, password: string, userType: 'client' | 'clinic'): Promise<boolean> => {
+  const register = useCallback(async (name: string, email: string, password: string, userType: 'client' | 'clinic', plan?: 'free' | 'basic' | 'intermediary' | 'experience'): Promise<boolean> => {
     try {
       // Simular delay de API
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -57,6 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password, // Em produção, a senha seria hasheada
         userType,
+        plan: userType === 'clinic' ? plan : undefined,
         isProfileComplete: userType === 'client' // Clientes têm perfil completo por padrão
       };
 

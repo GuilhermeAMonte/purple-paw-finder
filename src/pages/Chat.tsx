@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Send, Phone, MoreVertical, ShieldAlert, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChat } from '@/hooks/use-chat';
+import { INITIAL_MESSAGE } from '@/constants/messages';
+import { formatDateToLocale } from '@/lib/utils';
 
 interface Message {
   id: string;
@@ -25,23 +28,31 @@ const Chat = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  // Removed optionsOpen state, Popover will manage its own state
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageListRef = useRef<HTMLDivElement>(null);
+  const previousScrollHeight = useRef<number>(0);
 
   // Mock clinic data
-  const clinic = {
+  const clinic = useMemo(() => ({
     name: "Clínica Veterinária Pet Care",
     avatar: "/placeholder.svg",
     online: true
-  };
+  }), []);
+
+  const mockResponses = useMemo(() => [
+    'Obrigado pelas informações. Nosso veterinário está analisando o caso.',
+    'Entendi. Isso pode ser um sinal de que precisamos examinar mais de perto.',
+    'Vou encaminhar seu caso para nosso especialista.',
+    'Podemos agendar uma consulta para hoje ainda. Que horário seria melhor para você?'
+  ], []);
 
   // Initialize chat with system message
   useEffect(() => {
     const initialMessages: Message[] = [
       {
-        id: '1',
+        id: crypto.randomUUID(),
         text: 'Olá! Recebemos seu chamado e em breve um de nossos veterinários entrará em contato. Enquanto isso, pode nos contar mais detalhes sobre o caso?',
         sender: 'clinic',
         timestamp: new Date(),
@@ -56,12 +67,32 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const simulateClinicResponse = useCallback(() => {
+    const responses = [
+      'Obrigado pelas informações. Nosso veterinário está analisando o caso.',
+      'Entendi. Isso pode ser um sinal de que precisamos examinar mais de perto.',
+      'Vou encaminhar seu caso para nosso especialista.',
+      'Podemos agendar uma consulta para hoje ainda. Que horário seria melhor para você?'
+    ];
+    
+    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+    
+    const clinicMessage: Message = {
+      id: createMessageId(),
+      text: randomResponse,
+      sender: 'clinic',
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, clinicMessage]);
+  }, []);
+
+  const handleSendMessage = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
 
     const newMessage: Message = {
-      id: Date.now().toString(),
+      id: createMessageId(),
       text: message,
       sender: 'user',
       timestamp: new Date()
@@ -71,25 +102,7 @@ const Chat = () => {
     setMessage('');
 
     // Simulate clinic response (mock)
-    setTimeout(() => {
-      const responses = [
-        'Obrigado pelas informações. Nosso veterinário está analisando o caso.',
-        'Entendi. Isso pode ser um sinal de que precisamos examinar mais de perto.',
-        'Vou encaminhar seu caso para nosso especialista.',
-        'Podemos agendar uma consulta para hoje ainda. Que horário seria melhor para você?'
-      ];
-      
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      
-      const clinicMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: randomResponse,
-        sender: 'clinic',
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, clinicMessage]);
-    }, 1000 + Math.random() * 2000);
+    setTimeout(simulateClinicResponse, 1000 + Math.random() * 2000);
   };
 
   const formatTime = (date: Date) => {

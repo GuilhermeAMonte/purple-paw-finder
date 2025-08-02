@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,7 @@ const Register = () => {
     confirmPassword: ''
   });
   const [userType, setUserType] = useState<'client' | 'clinic'>('client');
+  const [selectedPlan, setSelectedPlan] = useState<'free' | 'basic' | 'intermediary' | 'experience'>('free');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -91,7 +91,7 @@ const Register = () => {
     }
 
     try {
-      await register(formData.name, formData.email, formData.password, userType);
+            await register(formData.name, formData.email, formData.password, userType, userType === 'clinic' ? selectedPlan : undefined);
       
       toast({
         title: "Sucesso!",
@@ -145,25 +145,154 @@ const Register = () => {
               {/* Seleção do tipo de usuário */}
               <div className="space-y-3">
                 <Label className="text-gray-700">Tipo de conta</Label>
-                <RadioGroup value={userType} onValueChange={(value: 'client' | 'clinic') => setUserType(value)} className="flex space-x-4">
-                  <div className="flex items-center space-x-2 border rounded-lg p-4 flex-1 cursor-pointer hover:bg-purple-50" onClick={() => setUserType('client')}>
-                    <RadioGroupItem value="client" id="client" />
-                    <User className="w-5 h-5 text-purple-600" />
+                <RadioGroup defaultValue="client" value={userType} onValueChange={(value: 'client' | 'clinic') => setUserType(value)} className="flex space-x-4">
+                  <label
+                    className={`flex items-center space-x-2 border-2 rounded-lg p-4 flex-1 cursor-pointer transition-all duration-200 ease-in-out transform hover:shadow-md
+                      ${userType === 'client' 
+                        ? 'border-purple-500 bg-gradient-to-r from-purple-50 to-purple-100 scale-[1.02]' 
+                        : 'border-transparent hover:border-purple-200'}`}
+                  >
+                    <RadioGroupItem value="client" className="hidden" />
+                    <div className={`p-2 rounded-full transition-colors duration-200 ${
+                      userType === 'client' ? 'bg-purple-100' : 'bg-gray-100'
+                    }`}>
+                      <User className={`w-5 h-5 transition-colors duration-200 ${
+                        userType === 'client' ? 'text-purple-600' : 'text-gray-500'
+                      }`} />
+                    </div>
                     <div className="flex-1">
-                      <Label htmlFor="client" className="cursor-pointer font-medium">Cliente</Label>
+                      <span className={`font-medium transition-colors duration-200 ${
+                        userType === 'client' ? 'text-purple-700' : 'text-gray-700'
+                      }`}>Cliente</span>
                       <p className="text-xs text-gray-500">Buscar clínicas veterinárias</p>
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-2 border rounded-lg p-4 flex-1 cursor-pointer hover:bg-purple-50" onClick={() => setUserType('clinic')}>
-                    <RadioGroupItem value="clinic" id="clinic" />
-                    <Building2 className="w-5 h-5 text-purple-600" />
+                  </label>
+                  <label
+                    className={`flex items-center space-x-2 border-2 rounded-lg p-4 flex-1 cursor-pointer transition-all duration-200 ease-in-out transform hover:shadow-md
+                      ${userType === 'clinic' 
+                        ? 'border-purple-500 bg-gradient-to-r from-purple-50 to-purple-100 scale-[1.02]' 
+                        : 'border-transparent hover:border-purple-200'}`}
+                  >
+                    <RadioGroupItem value="clinic" className="hidden" />
+                    <div className={`p-2 rounded-full transition-colors duration-200 ${
+                      userType === 'clinic' ? 'bg-purple-100' : 'bg-gray-100'
+                    }`}>
+                      <Building2 className={`w-5 h-5 transition-colors duration-200 ${
+                        userType === 'clinic' ? 'text-purple-600' : 'text-gray-500'
+                      }`} />
+                    </div>
                     <div className="flex-1">
-                      <Label htmlFor="clinic" className="cursor-pointer font-medium">Clínica</Label>
+                      <span className={`font-medium transition-colors duration-200 ${
+                        userType === 'clinic' ? 'text-purple-700' : 'text-gray-700'
+                      }`}>Clínica</span>
                       <p className="text-xs text-gray-500">Gerenciar clínica veterinária</p>
                     </div>
-                  </div>
+                  </label>
                 </RadioGroup>
               </div>
+
+              {/* Seleção de plano para clínicas */}
+              {userType === 'clinic' && (
+                <div className="space-y-3 mt-6 animate-in fade-in slide-in-from-top-4 duration-300">
+                  <Label className="text-gray-700">Selecione seu plano</Label>
+                  <RadioGroup 
+                    value={selectedPlan} 
+                    onValueChange={(value: 'free' | 'basic' | 'intermediary' | 'experience') => setSelectedPlan(value)} 
+                    className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Plano Free */}
+                    <label className="relative flex flex-col border-2 rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md border-transparent hover:border-purple-200">
+                      <RadioGroupItem value="free" className="absolute right-4 top-4" />
+                      <div className="mb-2">
+                        <h3 className="text-lg font-semibold text-gray-800">Free</h3>
+                        <p className="text-sm text-gray-500">Comece gratuitamente</p>
+                      </div>
+                      <div className="text-2xl font-bold text-purple-600 mb-4">$0</div>
+                      <ul className="text-sm text-gray-600 space-y-2">
+                        <li className="flex items-center">
+                          <Check className="w-4 h-4 text-green-500 mr-2" />
+                          Recursos básicos
+                        </li>
+                      </ul>
+                    </label>
+
+                    {/* Plano Basic */}
+                    <label className="relative flex flex-col border-2 rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md border-transparent hover:border-purple-200">
+                      <RadioGroupItem value="basic" className="absolute right-4 top-4" />
+                      <div className="mb-2">
+                        <h3 className="text-lg font-semibold text-gray-800">Basic</h3>
+                        <p className="text-sm text-gray-500">Para clínicas iniciantes</p>
+                      </div>
+                      <div className="flex items-baseline mb-4">
+                        <span className="text-2xl font-bold text-purple-600">$10</span>
+                        <span className="text-sm text-gray-500 ml-2">/mês</span>
+                        <span className="text-sm text-purple-400 ml-2">ou $100/ano</span>
+                      </div>
+                      <ul className="text-sm text-gray-600 space-y-2">
+                        <li className="flex items-center">
+                          <Check className="w-4 h-4 text-green-500 mr-2" />
+                          Todos os recursos Free
+                        </li>
+                        <li className="flex items-center">
+                          <Check className="w-4 h-4 text-green-500 mr-2" />
+                          Suporte prioritário
+                        </li>
+                      </ul>
+                    </label>
+
+                    {/* Plano Intermediário */}
+                    <label className="relative flex flex-col border-2 rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md border-transparent hover:border-purple-200">
+                      <RadioGroupItem value="intermediary" className="absolute right-4 top-4" />
+                      <div className="mb-2">
+                        <h3 className="text-lg font-semibold text-gray-800">Intermediário</h3>
+                        <p className="text-sm text-gray-500">Para clínicas em crescimento</p>
+                      </div>
+                      <div className="flex items-baseline mb-4">
+                        <span className="text-2xl font-bold text-purple-600">$25</span>
+                        <span className="text-sm text-gray-500 ml-2">/mês</span>
+                        <span className="text-sm text-purple-400 ml-2">ou $250/ano</span>
+                      </div>
+                      <ul className="text-sm text-gray-600 space-y-2">
+                        <li className="flex items-center">
+                          <Check className="w-4 h-4 text-green-500 mr-2" />
+                          Todos os recursos Basic
+                        </li>
+                        <li className="flex items-center">
+                          <Check className="w-4 h-4 text-green-500 mr-2" />
+                          Análise avançada
+                        </li>
+                      </ul>
+                    </label>
+
+                    {/* Plano Experience */}
+                    <label className="relative flex flex-col border-2 rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md border-transparent hover:border-purple-200">
+                      <RadioGroupItem value="experience" className="absolute right-4 top-4" />
+                      <div className="mb-2">
+                        <h3 className="text-lg font-semibold text-gray-800">Experience</h3>
+                        <p className="text-sm text-gray-500">Recursos completos</p>
+                      </div>
+                      <div className="flex items-baseline mb-4">
+                        <span className="text-2xl font-bold text-purple-600">$50</span>
+                        <span className="text-sm text-gray-500 ml-2">/mês</span>
+                        <span className="text-sm text-purple-400 ml-2">ou $500/ano</span>
+                      </div>
+                      <ul className="text-sm text-gray-600 space-y-2">
+                        <li className="flex items-center">
+                          <Check className="w-4 h-4 text-green-500 mr-2" />
+                          Todos os recursos Intermediário
+                        </li>
+                        <li className="flex items-center">
+                          <Check className="w-4 h-4 text-green-500 mr-2" />
+                          Suporte 24/7
+                        </li>
+                        <li className="flex items-center">
+                          <Check className="w-4 h-4 text-green-500 mr-2" />
+                          Recursos exclusivos
+                        </li>
+                      </ul>
+                    </label>
+                  </RadioGroup>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-gray-700">
                   Nome completo
