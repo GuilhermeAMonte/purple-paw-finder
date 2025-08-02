@@ -171,18 +171,20 @@ const Chat = () => {
       {/* Message Input */}
       <div style={{maxWidth:'600px', width:'100%', margin:'0 auto', marginBottom:'2rem'}}>
         <form onSubmit={handleSendMessage} className="flex gap-2" style={{marginTop:'2rem'}}>
-          <input
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Digite sua mensagem..."
-            className="apple-input flex-1"
-            style={{borderRadius:'24px'}}
-          />
+          <div style={{flex:1, background:'#fff', borderRadius:'24px', boxShadow:'0 2px 12px #007aff11', display:'flex', alignItems:'center', padding:'0.5rem 1rem'}}>
+            <input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Digite sua mensagem..."
+              className="apple-input flex-1"
+              style={{borderRadius:'18px', background:'transparent', border:'none', boxShadow:'none', fontSize:'1.1rem', outline:'none'}}
+            />
+          </div>
           <button 
             type="submit" 
             className="apple-btn rounded-full"
             disabled={!message.trim()}
-            style={{padding:'0 1.2rem', display:'flex', alignItems:'center', justifyContent:'center'}}
+            style={{padding:'0 1.2rem', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 8px #007aff22'}}
           >
             <Send className="w-4 h-4" />
           </button>

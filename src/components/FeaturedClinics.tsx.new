@@ -77,27 +77,11 @@ const FeaturedClinics = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'all' | 'favorites' | 'emergency' | 'tickets'>('all');
   const [userTickets, setUserTickets] = useState<any[]>([]);
-  const [forceUpdate, setForceUpdate] = useState(false);
 
-  // Load user tickets from localStorage and listen to search updates
+  // Load user tickets from localStorage
   useEffect(() => {
     const tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
     setUserTickets(tickets);
-
-    // Atualiza a lista quando os filtros mudam
-    const handleStorageChange = () => {
-      // Força uma atualização do componente quando os filtros mudam
-      setForceUpdate(prev => !prev);
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    // Também escuta o evento customizado do SearchSection
-    window.addEventListener('localStorageChange', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('localStorageChange', handleStorageChange);
-    };
   }, [user]);
 
   // Geolocalização do usuário
@@ -138,14 +122,9 @@ const FeaturedClinics = () => {
     if (searchSpecialty) {
       filtered = filtered.filter(clinic => clinic.specialties.includes(searchSpecialty));
     }
-    // Filtrar por localização textual (bairro, cidade ou CEP)
+    // Filtrar por localização textual (bairro/cidade/CEP)
     if (searchLocation) {
-      const searchTerms = searchLocation.toLowerCase().split(/[\s,-]+/); // Divide por espaços, vírgulas ou hífens
-      filtered = filtered.filter(clinic => {
-        const addressLower = clinic.address.toLowerCase();
-        // Verifica se todos os termos da busca estão presentes no endereço
-        return searchTerms.every(term => addressLower.includes(term));
-      });
+      filtered = filtered.filter(clinic => clinic.address.toLowerCase().includes(searchLocation));
     }
 
     switch (activeTab) {
@@ -176,7 +155,7 @@ const FeaturedClinics = () => {
   const filteredClinics = getFilteredClinics();
 
   return (
-    <section id="featured-clinics" className="apple-bg py-8">
+    <section className="apple-bg py-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex space-x-4 mb-6 justify-center">
           <button
