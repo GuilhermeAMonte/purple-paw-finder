@@ -1,5 +1,15 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+// Função simples de hash para ambiente de testes (não usar em produção)
+function simpleHash(str: string): string {
+  let hash = 0, i, chr;
+  if (str.length === 0) return hash.toString();
+  for (i = 0; i < str.length; i++) {
+    chr = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + chr;
+    hash |= 0;
+  }
+  return hash.toString();
+}
 
 interface User {
   id: string;
@@ -42,27 +52,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = useCallback(async (name: string, email: string, password: string, userType: 'client' | 'clinic', plan?: 'free' | 'basic' | 'intermediary' | 'experience'): Promise<boolean> => {
     try {
-      // Simular delay de API
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Verificar se o email já existe
+
       const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
       if (existingUsers.some((u: any) => u.email === email)) {
         throw new Error('Email já cadastrado');
       }
 
-      // Criar novo usuário
+      const hashedPassword = simpleHash(password); // Hash simples
+
       const newUser = {
         id: Date.now().toString(),
         name,
         email,
-        password, // Em produção, a senha seria hasheada
+        password: hashedPassword,
         userType,
         plan: userType === 'clinic' ? plan : undefined,
-        isProfileComplete: userType === 'client' // Clientes têm perfil completo por padrão
+        isProfileComplete: userType === 'client'
       };
 
-      // Salvar usuário na "base de dados" (localStorage)
       const updatedUsers = [...existingUsers, newUser];
       localStorage.setItem('users', JSON.stringify(updatedUsers));
 
@@ -70,22 +78,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       throw error;
     }
-  };
+  }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Simular delay de API
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Buscar usuário na "base de dados"
+
       const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const foundUser = users.find((u: any) => u.email === email && u.password === password);
-      
-      if (!foundUser) {
+      const foundUser = users.find((u: any) => u.email === email);
+
+      if (!foundUser || simpleHash(password) !== foundUser.password) {
         throw new Error('Credenciais inválidas');
       }
 
-      // Criar objeto do usuário sem a senha
       const userWithoutPassword = {
         id: foundUser.id,
         name: foundUser.name,
@@ -96,7 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser(userWithoutPassword);
       localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-      
+
       return true;
     } catch (error) {
       throw error;
@@ -108,18 +113,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('user');
   };
 
-  const updateUserProfile = async (profileData: any) => {
+  // Adicionar tipagem ao profileData
+  const updateUserProfile = async (profileData: Partial<User>) => {
     if (!user) return;
 
-    // Atualizar usuário no localStorage
     const users = JSON.parse(localStorage.getItem('users') || '[]');
     const userIndex = users.findIndex((u: any) => u.id === user.id);
-    
+
     if (userIndex !== -1) {
       users[userIndex] = { ...users[userIndex], ...profileData, isProfileComplete: true };
       localStorage.setItem('users', JSON.stringify(users));
-      
-      // Atualizar usuário atual
+
       const updatedUser = { ...user, ...profileData, isProfileComplete: true };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));

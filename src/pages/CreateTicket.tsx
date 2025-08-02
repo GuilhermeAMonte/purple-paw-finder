@@ -283,7 +283,7 @@ const CreateTicket = () => {
                       type="button"
                       variant="secondary"
                       className="w-fit"
-                      onClick={() => navigate('/profile?tab=pets&add=1&returnTo=/create-ticket')}
+                      onClick={() => navigate(`/profile?tab=pets&add=1&returnTo=/clinic/${id}/create-ticket`)}
                     >
                       Cadastrar novo pet
                     </Button>
