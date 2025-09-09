@@ -48,7 +48,11 @@ const CreateTicket = () => {
     ownerName: user?.name || '',
     ownerPhone: localStorage.getItem(`phone_${user?.id}`) || '',
     ownerEmail: user?.email || '',
-    ownerAddress: localStorage.getItem(`address_${user?.id}`) || ''
+    ownerCep: localStorage.getItem(`cep_${user?.id}`) || '',
+    ownerEstado: localStorage.getItem(`estado_${user?.id}`) || '',
+    ownerCidade: localStorage.getItem(`cidade_${user?.id}`) || '',
+    ownerRua: localStorage.getItem(`rua_${user?.id}`) || '',
+    ownerNumero: localStorage.getItem(`numero_${user?.id}`) || ''
   });
   
 
@@ -184,10 +188,10 @@ const CreateTicket = () => {
     }
 
     // Validar se há informações do proprietário
-    if (!formData.ownerName || !formData.ownerPhone || !formData.ownerEmail) {
+    if (!formData.ownerName || !formData.ownerPhone || !formData.ownerEmail || !formData.ownerCep || !formData.ownerEstado || !formData.ownerCidade || !formData.ownerRua || !formData.ownerNumero) {
       toast({
         title: "Erro",
-        description: "Informações do proprietário são obrigatórias",
+        description: "Informações completas do proprietário são obrigatórias",
         variant: "destructive",
       });
       return;
@@ -492,33 +496,99 @@ const CreateTicket = () => {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="ownerEmail" className="text-sm font-medium text-foreground mb-2 block">
+                        Email
+                      </Label>
+                      <Input
+                        id="ownerEmail"
+                        name="ownerEmail"
+                        type="email"
+                        value={formData.ownerEmail}
+                        onChange={handleInputChange}
+                        placeholder="seu@email.com"
+                        className="h-10 rounded-xl border-border/50"
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <Label htmlFor="ownerEmail" className="text-sm font-medium text-foreground mb-2 block">
-                          Email
+                        <Label htmlFor="ownerCep" className="text-sm font-medium text-foreground mb-2 block">
+                          CEP
                         </Label>
                         <Input
-                          id="ownerEmail"
-                          name="ownerEmail"
-                          type="email"
-                          value={formData.ownerEmail}
+                          id="ownerCep"
+                          name="ownerCep"
+                          value={formData.ownerCep}
                           onChange={handleInputChange}
-                          placeholder="seu@email.com"
+                          placeholder="00000-000"
                           className="h-10 rounded-xl border-border/50"
                           required
+                          readOnly
                         />
                       </div>
                       <div>
-                        <Label htmlFor="ownerAddress" className="text-sm font-medium text-foreground mb-2 block">
-                          Endereço
+                        <Label htmlFor="ownerEstado" className="text-sm font-medium text-foreground mb-2 block">
+                          Estado
                         </Label>
                         <Input
-                          id="ownerAddress"
-                          name="ownerAddress"
-                          value={formData.ownerAddress}
+                          id="ownerEstado"
+                          name="ownerEstado"
+                          value={formData.ownerEstado}
                           onChange={handleInputChange}
-                          placeholder="Rua, número, bairro"
+                          placeholder="Estado"
                           className="h-10 rounded-xl border-border/50"
+                          required
+                          readOnly
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="ownerCidade" className="text-sm font-medium text-foreground mb-2 block">
+                          Cidade
+                        </Label>
+                        <Input
+                          id="ownerCidade"
+                          name="ownerCidade"
+                          value={formData.ownerCidade}
+                          onChange={handleInputChange}
+                          placeholder="Cidade"
+                          className="h-10 rounded-xl border-border/50"
+                          required
+                          readOnly
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="col-span-2">
+                        <Label htmlFor="ownerRua" className="text-sm font-medium text-foreground mb-2 block">
+                          Rua/Avenida
+                        </Label>
+                        <Input
+                          id="ownerRua"
+                          name="ownerRua"
+                          value={formData.ownerRua}
+                          onChange={handleInputChange}
+                          placeholder="Nome da rua ou avenida"
+                          className="h-10 rounded-xl border-border/50"
+                          required
+                          readOnly
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="ownerNumero" className="text-sm font-medium text-foreground mb-2 block">
+                          Número
+                        </Label>
+                        <Input
+                          id="ownerNumero"
+                          name="ownerNumero"
+                          value={formData.ownerNumero}
+                          onChange={handleInputChange}
+                          placeholder="123"
+                          className="h-10 rounded-xl border-border/50"
+                          required
+                          readOnly
                         />
                       </div>
                     </div>
