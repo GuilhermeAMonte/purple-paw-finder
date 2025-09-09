@@ -55,19 +55,29 @@ const CreateTicket = () => {
     ownerNumero: ''
   });
 
-  // Atualizar dados do proprietário quando o usuário estiver disponível
+  // Atualizar dados do tutor quando o usuário estiver disponível
   useEffect(() => {
     if (user?.id) {
+      console.log('Usuário logado:', user);
+      const phone = localStorage.getItem(`phone_${user.id}`);
+      const cep = localStorage.getItem(`cep_${user.id}`);
+      const estado = localStorage.getItem(`estado_${user.id}`);
+      const cidade = localStorage.getItem(`cidade_${user.id}`);
+      const rua = localStorage.getItem(`rua_${user.id}`);
+      const numero = localStorage.getItem(`numero_${user.id}`);
+      
+      console.log('Dados do localStorage:', { phone, cep, estado, cidade, rua, numero });
+      
       setFormData(prev => ({
         ...prev,
         ownerName: user.name || '',
-        ownerPhone: localStorage.getItem(`phone_${user.id}`) || '',
+        ownerPhone: phone || '',
         ownerEmail: user.email || '',
-        ownerCep: localStorage.getItem(`cep_${user.id}`) || '',
-        ownerEstado: localStorage.getItem(`estado_${user.id}`) || '',
-        ownerCidade: localStorage.getItem(`cidade_${user.id}`) || '',
-        ownerRua: localStorage.getItem(`rua_${user.id}`) || '',
-        ownerNumero: localStorage.getItem(`numero_${user.id}`) || ''
+        ownerCep: cep || '',
+        ownerEstado: estado || '',
+        ownerCidade: cidade || '',
+        ownerRua: rua || '',
+        ownerNumero: numero || ''
       }));
     }
   }, [user]);
@@ -204,11 +214,11 @@ const CreateTicket = () => {
       return;
     }
 
-    // Validar se há informações do proprietário
+    // Validar se há informações do tutor
     if (!formData.ownerName || !formData.ownerPhone || !formData.ownerEmail || !formData.ownerCep || !formData.ownerEstado || !formData.ownerCidade || !formData.ownerRua || !formData.ownerNumero) {
       toast({
         title: "Erro",
-        description: "Informações completas do proprietário são obrigatórias",
+        description: "Informações completas do tutor são obrigatórias",
         variant: "destructive",
       });
       return;
@@ -479,9 +489,9 @@ const CreateTicket = () => {
 
                   {/* Informações do Proprietário */}
                   <div className="space-y-4">
-                    <Label className="text-base font-medium text-foreground">
-                      Informações do Proprietário *
-                    </Label>
+                     <Label className="text-base font-medium text-foreground">
+                       Informações do Tutor *
+                     </Label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="ownerName" className="text-sm font-medium text-foreground mb-2 block">

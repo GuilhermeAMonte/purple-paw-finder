@@ -141,14 +141,28 @@ const Register = () => {
       const users = JSON.parse(localStorage.getItem('users') || '[]');
       const newUser = users.find((u: any) => u.email === formData.email);
       
+      console.log('Todos os usuários:', users);
+      console.log('Usuário encontrado:', newUser);
+      
       if (newUser) {
         // Salvar informações adicionais no localStorage
+        console.log('Salvando dados do usuário:', newUser.id, formData);
         localStorage.setItem(`phone_${newUser.id}`, formData.phone);
         localStorage.setItem(`cep_${newUser.id}`, formData.cep);
         localStorage.setItem(`estado_${newUser.id}`, formData.estado);
         localStorage.setItem(`cidade_${newUser.id}`, formData.cidade);
         localStorage.setItem(`rua_${newUser.id}`, formData.rua);
         localStorage.setItem(`numero_${newUser.id}`, formData.numero);
+        console.log('Dados salvos no localStorage para usuário:', newUser.id);
+        
+        // Verificar se os dados foram salvos
+        console.log('Verificando dados salvos:');
+        console.log('phone:', localStorage.getItem(`phone_${newUser.id}`));
+        console.log('cep:', localStorage.getItem(`cep_${newUser.id}`));
+        console.log('estado:', localStorage.getItem(`estado_${newUser.id}`));
+        console.log('cidade:', localStorage.getItem(`cidade_${newUser.id}`));
+        console.log('rua:', localStorage.getItem(`rua_${newUser.id}`));
+        console.log('numero:', localStorage.getItem(`numero_${newUser.id}`));
       }
       
       toast({

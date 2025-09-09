@@ -71,8 +71,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isProfileComplete: userType === 'client'
       };
 
+      console.log('Criando novo usuário:', newUser);
+
       const updatedUsers = [...existingUsers, newUser];
       localStorage.setItem('users', JSON.stringify(updatedUsers));
+      
+      console.log('Usuário salvo no localStorage users:', updatedUsers);
 
       return true;
     } catch (error) {
@@ -87,6 +91,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const users = JSON.parse(localStorage.getItem('users') || '[]');
       const foundUser = users.find((u: any) => u.email === email);
 
+      console.log('Tentativa de login para:', email);
+      console.log('Usuário encontrado:', foundUser);
+
       if (!foundUser || simpleHash(password) !== foundUser.password) {
         throw new Error('Credenciais inválidas');
       }
@@ -98,6 +105,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userType: foundUser.userType,
         isProfileComplete: foundUser.isProfileComplete
       };
+
+      console.log('Usuário logado:', userWithoutPassword);
 
       setUser(userWithoutPassword);
       localStorage.setItem('user', JSON.stringify(userWithoutPassword));
