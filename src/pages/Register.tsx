@@ -15,6 +15,7 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    phone: '',
     cep: '',
     estado: '',
     cidade: '',
@@ -91,7 +92,7 @@ const Register = () => {
 
     // Validações
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword || 
-        !formData.cep || !formData.estado || !formData.cidade || !formData.rua || !formData.numero) {
+        !formData.phone || !formData.cep || !formData.estado || !formData.cidade || !formData.rua || !formData.numero) {
       toast({
         title: "Erro",
         description: "Por favor, preencha todos os campos.",
@@ -133,13 +134,22 @@ const Register = () => {
     }
 
     try {
-      const userData = {
-        ...formData,
-        userType,
-        plan: userType === 'clinic' ? selectedPlan : undefined
-      };
-      
+      // Registrar o usuário
       await register(formData.name, formData.email, formData.password, userType, userType === 'clinic' ? selectedPlan : undefined);
+      
+      // Obter o ID do usuário recém-criado
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const newUser = users.find((u: any) => u.email === formData.email);
+      
+      if (newUser) {
+        // Salvar informações adicionais no localStorage
+        localStorage.setItem(`phone_${newUser.id}`, formData.phone);
+        localStorage.setItem(`cep_${newUser.id}`, formData.cep);
+        localStorage.setItem(`estado_${newUser.id}`, formData.estado);
+        localStorage.setItem(`cidade_${newUser.id}`, formData.cidade);
+        localStorage.setItem(`rua_${newUser.id}`, formData.rua);
+        localStorage.setItem(`numero_${newUser.id}`, formData.numero);
+      }
       
       toast({
         title: "Sucesso!",
@@ -371,6 +381,23 @@ const Register = () => {
                   onChange={handleInputChange}
                   required
                   autoComplete="email"
+                  className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-gray-700">
+                  Telefone
+                </Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="(11) 99999-9999"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  required
+                  autoComplete="tel"
                   className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
                 />
               </div>

@@ -45,15 +45,32 @@ const CreateTicket = () => {
     petWeight: '',
     petColor: '',
     petNotes: '',
-    ownerName: user?.name || '',
-    ownerPhone: localStorage.getItem(`phone_${user?.id}`) || '',
-    ownerEmail: user?.email || '',
-    ownerCep: localStorage.getItem(`cep_${user?.id}`) || '',
-    ownerEstado: localStorage.getItem(`estado_${user?.id}`) || '',
-    ownerCidade: localStorage.getItem(`cidade_${user?.id}`) || '',
-    ownerRua: localStorage.getItem(`rua_${user?.id}`) || '',
-    ownerNumero: localStorage.getItem(`numero_${user?.id}`) || ''
+    ownerName: '',
+    ownerPhone: '',
+    ownerEmail: '',
+    ownerCep: '',
+    ownerEstado: '',
+    ownerCidade: '',
+    ownerRua: '',
+    ownerNumero: ''
   });
+
+  // Atualizar dados do proprietário quando o usuário estiver disponível
+  useEffect(() => {
+    if (user?.id) {
+      setFormData(prev => ({
+        ...prev,
+        ownerName: user.name || '',
+        ownerPhone: localStorage.getItem(`phone_${user.id}`) || '',
+        ownerEmail: user.email || '',
+        ownerCep: localStorage.getItem(`cep_${user.id}`) || '',
+        ownerEstado: localStorage.getItem(`estado_${user.id}`) || '',
+        ownerCidade: localStorage.getItem(`cidade_${user.id}`) || '',
+        ownerRua: localStorage.getItem(`rua_${user.id}`) || '',
+        ownerNumero: localStorage.getItem(`numero_${user.id}`) || ''
+      }));
+    }
+  }, [user]);
   
 
   const [file, setFile] = useState<File | null>(null);
@@ -525,7 +542,6 @@ const CreateTicket = () => {
                           placeholder="00000-000"
                           className="h-10 rounded-xl border-border/50"
                           required
-                          readOnly
                         />
                       </div>
                       <div>
@@ -540,7 +556,6 @@ const CreateTicket = () => {
                           placeholder="Estado"
                           className="h-10 rounded-xl border-border/50"
                           required
-                          readOnly
                         />
                       </div>
                       <div>
@@ -555,7 +570,6 @@ const CreateTicket = () => {
                           placeholder="Cidade"
                           className="h-10 rounded-xl border-border/50"
                           required
-                          readOnly
                         />
                       </div>
                     </div>
@@ -573,7 +587,6 @@ const CreateTicket = () => {
                           placeholder="Nome da rua ou avenida"
                           className="h-10 rounded-xl border-border/50"
                           required
-                          readOnly
                         />
                       </div>
                       <div>
@@ -588,7 +601,6 @@ const CreateTicket = () => {
                           placeholder="123"
                           className="h-10 rounded-xl border-border/50"
                           required
-                          readOnly
                         />
                       </div>
                     </div>
