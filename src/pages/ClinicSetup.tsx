@@ -142,7 +142,7 @@ const ClinicSetup = () => {
         description: "Perfil da clínica configurado com sucesso.",
       });
       
-      navigate('/clinic-dashboard');
+      navigate('/clinic-visual-setup');
     } catch (error: any) {
       toast({
         title: "Erro",
