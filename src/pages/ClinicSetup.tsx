@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,9 +42,52 @@ const ClinicSetup = () => {
     specialties: [] as string[]
   });
   const [isLoading, setIsLoading] = useState(false);
-  const { updateUserProfile } = useAuth();
+  const { updateUserProfile, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Carregar dados do perfil quando o usuário estiver disponível
+  useEffect(() => {
+    if (user?.id) {
+      console.log('Carregando dados do usuário:', user.id);
+      
+      const phone = localStorage.getItem(`phone_${user.id}`);
+      const cep = localStorage.getItem(`cep_${user.id}`);
+      const estado = localStorage.getItem(`estado_${user.id}`);
+      const cidade = localStorage.getItem(`cidade_${user.id}`);
+      const rua = localStorage.getItem(`rua_${user.id}`);
+      const numero = localStorage.getItem(`numero_${user.id}`);
+      
+      console.log('Dados recuperados do localStorage:');
+      console.log('phone:', phone);
+      console.log('cep:', cep);
+      console.log('estado:', estado);
+      console.log('cidade:', cidade);
+      console.log('rua:', rua);
+      console.log('numero:', numero);
+      
+      // Montar o endereço completo
+      const enderecoCompleto = [rua, numero].filter(Boolean).join(', ');
+      
+      // Pré-preencher o formulário com os dados salvos
+      setFormData(prev => ({
+        ...prev,
+        phone: phone || '',
+        cep: cep || '',
+        state: estado || '',
+        city: cidade || '',
+        address: enderecoCompleto || ''
+      }));
+      
+      console.log('Formulário pré-preenchido com:', {
+        phone: phone || '',
+        cep: cep || '',
+        state: estado || '',
+        city: cidade || '',
+        address: enderecoCompleto || ''
+      });
+    }
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
