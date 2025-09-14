@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Heart, Camera, Clock, Globe, MapPin, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,7 +33,8 @@ const ClinicVisualSetup = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>('');
-  const { updateUserProfile } = useAuth();
+  const [is24Hours, setIs24Hours] = useState(false);
+  const { updateUserProfile, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -45,6 +47,26 @@ const ClinicVisualSetup = () => {
     { key: 'saturday', label: 'Sábado' },
     { key: 'sunday', label: 'Domingo' }
   ];
+
+  const timeOptions = [
+    '00:00', '00:30', '01:00', '01:30', '02:00', '02:30', '03:00', '03:30',
+    '04:00', '04:30', '05:00', '05:30', '06:00', '06:30', '07:00', '07:30',
+    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30',
+    '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30'
+  ];
+
+  // Verificar se foi selecionado atendimento 24h na página anterior
+  useEffect(() => {
+    if (user?.id) {
+      // Buscar dados salvos do ClinicSetup no localStorage ou contexto
+      const savedIs24Hours = localStorage.getItem(`is24Hours_${user.id}`);
+      if (savedIs24Hours === 'true') {
+        setIs24Hours(true);
+      }
+    }
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -113,9 +135,16 @@ const ClinicVisualSetup = () => {
     setIsLoading(true);
 
     try {
+      // Salvar as configurações visuais incluindo se é 24h
       await updateUserProfile({
-        visualSettings: formData
+        visualSettings: formData,
+        is24Hours
       });
+      
+      // Salvar no localStorage para persistir
+      if (user?.id) {
+        localStorage.setItem(`is24Hours_${user.id}`, is24Hours.toString());
+      }
       
       toast({
         title: "Sucesso!",
@@ -196,55 +225,71 @@ const ClinicVisualSetup = () => {
             </CardContent>
           </Card>
 
-          {/* Horários de Funcionamento */}
-          <Card className="shadow-lg border-purple-100">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Clock className="w-6 h-6 text-purple-600" />
-                <span>Horários de Funcionamento</span>
-              </CardTitle>
-              <CardDescription>
-                Configure os horários de atendimento da sua clínica
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {daysOfWeek.map(({ key, label }) => (
-                  <div key={key} className="flex items-center space-x-4">
-                    <div className="w-32">
-                      <Label className="text-sm font-medium">{label}</Label>
+          {/* Horários de Funcionamento - só mostra se não for 24h */}
+          {!is24Hours && (
+            <Card className="shadow-lg border-purple-100">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Clock className="w-6 h-6 text-purple-600" />
+                  <span>Horários de Funcionamento</span>
+                </CardTitle>
+                <CardDescription>
+                  Configure os horários de atendimento da sua clínica
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {daysOfWeek.map(({ key, label }) => (
+                    <div key={key} className="flex items-center space-x-4">
+                      <div className="w-32">
+                        <Label className="text-sm font-medium">{label}</Label>
+                      </div>
+                      <div className="flex items-center space-x-2 flex-1">
+                        <Select
+                          value={formData.openingHours[key as keyof typeof formData.openingHours].open}
+                          onValueChange={(value) => handleHourChange(key, 'open', value)}
+                          disabled={formData.openingHours[key as keyof typeof formData.openingHours].closed}
+                        >
+                          <SelectTrigger className="w-24 border-purple-200 focus:border-purple-400">
+                            <SelectValue placeholder="Abertura" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {timeOptions.map((time) => (
+                              <SelectItem key={time} value={time}>{time}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <span className="text-gray-500">às</span>
+                        <Select
+                          value={formData.openingHours[key as keyof typeof formData.openingHours].close}
+                          onValueChange={(value) => handleHourChange(key, 'close', value)}
+                          disabled={formData.openingHours[key as keyof typeof formData.openingHours].closed}
+                        >
+                          <SelectTrigger className="w-24 border-purple-200 focus:border-purple-400">
+                            <SelectValue placeholder="Fechamento" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {timeOptions.map((time) => (
+                              <SelectItem key={time} value={time}>{time}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          variant={formData.openingHours[key as keyof typeof formData.openingHours].closed ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleDayToggle(key, !formData.openingHours[key as keyof typeof formData.openingHours].closed)}
+                          className="ml-2"
+                        >
+                          {formData.openingHours[key as keyof typeof formData.openingHours].closed ? "Fechado" : "Aberto"}
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2 flex-1">
-                      <Input
-                        type="time"
-                        value={formData.openingHours[key as keyof typeof formData.openingHours].open}
-                        onChange={(e) => handleHourChange(key, 'open', e.target.value)}
-                        disabled={formData.openingHours[key as keyof typeof formData.openingHours].closed}
-                        className="w-24 border-purple-200 focus:border-purple-400"
-                      />
-                      <span className="text-gray-500">às</span>
-                      <Input
-                        type="time"
-                        value={formData.openingHours[key as keyof typeof formData.openingHours].close}
-                        onChange={(e) => handleHourChange(key, 'close', e.target.value)}
-                        disabled={formData.openingHours[key as keyof typeof formData.openingHours].closed}
-                        className="w-24 border-purple-200 focus:border-purple-400"
-                      />
-                      <Button
-                        type="button"
-                        variant={formData.openingHours[key as keyof typeof formData.openingHours].closed ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleDayToggle(key, !formData.openingHours[key as keyof typeof formData.openingHours].closed)}
-                        className="ml-2"
-                      >
-                        {formData.openingHours[key as keyof typeof formData.openingHours].closed ? "Fechado" : "Aberto"}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Mensagens e Informações */}
           <Card className="shadow-lg border-purple-100">

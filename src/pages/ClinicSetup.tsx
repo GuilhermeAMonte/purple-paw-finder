@@ -137,6 +137,11 @@ const ClinicSetup = () => {
     try {
       await updateUserProfile(formData);
       
+      // Salvar is24Hours no localStorage para a próxima página
+      if (user?.id) {
+        localStorage.setItem(`is24Hours_${user.id}`, formData.is24Hours.toString());
+      }
+      
       toast({
         title: "Sucesso!",
         description: "Perfil da clínica configurado com sucesso.",
