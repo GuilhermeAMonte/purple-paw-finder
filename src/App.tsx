@@ -14,6 +14,7 @@ import CreateTicket from "./pages/CreateTicket";
 import Chat from "./pages/Chat";
 import Profile from "./pages/Profile";
 import ClinicSetup from "./pages/ClinicSetup";
+import ClinicVisualSetup from "./pages/ClinicVisualSetup";
 import ClinicDashboard from "./pages/ClinicDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/chat/:ticketId" element={<Chat />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/clinic-setup" element={<ClinicSetup />} />
+              <Route path="/clinic-visual-setup" element={<ClinicVisualSetup />} />
               <Route path="/clinic-dashboard" element={<ClinicDashboard />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

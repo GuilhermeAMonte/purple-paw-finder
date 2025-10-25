@@ -14,7 +14,13 @@ const Register = () => {
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    phone: '',
+    cep: '',
+    estado: '',
+    cidade: '',
+    rua: '',
+    numero: ''
   });
   const [userType, setUserType] = useState<'client' | 'clinic'>('client');
   const [selectedPlan, setSelectedPlan] = useState<'free' | 'basic' | 'intermediary' | 'experience'>('free');
@@ -44,12 +50,49 @@ const Register = () => {
     });
   };
 
+  const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cep = e.target.value.replace(/\D/g, '');
+    setFormData({
+      ...formData,
+      cep: cep
+    });
+
+    if (cep.length === 8) {
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const data = await response.json();
+        
+        if (!data.erro) {
+          setFormData(prev => ({
+            ...prev,
+            estado: data.uf,
+            cidade: data.localidade,
+            rua: data.logradouro
+          }));
+        } else {
+          toast({
+            title: "CEP não encontrado",
+            description: "Por favor, verifique o CEP digitado.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Erro",
+          description: "Erro ao buscar CEP. Tente novamente.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     // Validações
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword || 
+        !formData.phone || !formData.cep || !formData.estado || !formData.cidade || !formData.rua || !formData.numero) {
       toast({
         title: "Erro",
         description: "Por favor, preencha todos os campos.",
@@ -91,7 +134,36 @@ const Register = () => {
     }
 
     try {
-            await register(formData.name, formData.email, formData.password, userType, userType === 'clinic' ? selectedPlan : undefined);
+      // Registrar o usuário
+      await register(formData.name, formData.email, formData.password, userType, userType === 'clinic' ? selectedPlan : undefined);
+      
+      // Obter o ID do usuário recém-criado
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const newUser = users.find((u: any) => u.email === formData.email);
+      
+      console.log('Todos os usuários:', users);
+      console.log('Usuário encontrado:', newUser);
+      
+      if (newUser) {
+        // Salvar informações adicionais no localStorage
+        console.log('Salvando dados do usuário:', newUser.id, formData);
+        localStorage.setItem(`phone_${newUser.id}`, formData.phone);
+        localStorage.setItem(`cep_${newUser.id}`, formData.cep);
+        localStorage.setItem(`estado_${newUser.id}`, formData.estado);
+        localStorage.setItem(`cidade_${newUser.id}`, formData.cidade);
+        localStorage.setItem(`rua_${newUser.id}`, formData.rua);
+        localStorage.setItem(`numero_${newUser.id}`, formData.numero);
+        console.log('Dados salvos no localStorage para usuário:', newUser.id);
+        
+        // Verificar se os dados foram salvos
+        console.log('Verificando dados salvos:');
+        console.log('phone:', localStorage.getItem(`phone_${newUser.id}`));
+        console.log('cep:', localStorage.getItem(`cep_${newUser.id}`));
+        console.log('estado:', localStorage.getItem(`estado_${newUser.id}`));
+        console.log('cidade:', localStorage.getItem(`cidade_${newUser.id}`));
+        console.log('rua:', localStorage.getItem(`rua_${newUser.id}`));
+        console.log('numero:', localStorage.getItem(`numero_${newUser.id}`));
+      }
       
       toast({
         title: "Sucesso!",
@@ -325,6 +397,112 @@ const Register = () => {
                   autoComplete="email"
                   className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-gray-700">
+                  Telefone
+                </Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="(11) 99999-9999"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  required
+                  autoComplete="tel"
+                  className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                />
+              </div>
+
+              {/* Campos de Endereço */}
+              <div className="space-y-4 pt-4 border-t border-purple-100">
+                <h3 className="text-lg font-semibold text-gray-800">Endereço</h3>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="cep" className="text-gray-700">
+                    CEP
+                  </Label>
+                  <Input
+                    id="cep"
+                    name="cep"
+                    type="text"
+                    placeholder="00000-000"
+                    value={formData.cep}
+                    onChange={handleCepChange}
+                    required
+                    maxLength={8}
+                    className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="estado" className="text-gray-700">
+                      Estado
+                    </Label>
+                    <Input
+                      id="estado"
+                      name="estado"
+                      type="text"
+                      placeholder="UF"
+                      value={formData.estado}
+                      onChange={handleInputChange}
+                      required
+                      maxLength={2}
+                      className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="cidade" className="text-gray-700">
+                      Cidade
+                    </Label>
+                    <Input
+                      id="cidade"
+                      name="cidade"
+                      type="text"
+                      placeholder="Sua cidade"
+                      value={formData.cidade}
+                      onChange={handleInputChange}
+                      required
+                      className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="rua" className="text-gray-700">
+                    Rua/Avenida
+                  </Label>
+                  <Input
+                    id="rua"
+                    name="rua"
+                    type="text"
+                    placeholder="Nome da rua ou avenida"
+                    value={formData.rua}
+                    onChange={handleInputChange}
+                    required
+                    className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="numero" className="text-gray-700">
+                    Número
+                  </Label>
+                  <Input
+                    id="numero"
+                    name="numero"
+                    type="text"
+                    placeholder="Número da residência"
+                    value={formData.numero}
+                    onChange={handleInputChange}
+                    required
+                    className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
