@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Clock, MessageSquare, User } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import ClinicCard from './ClinicCard';
 import { useFavorites } from '@/contexts/FavoritesContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import ClinicCard from './ClinicCard';
 
-// Array de clínicas
-const clinics = [
+export const clinics = [
   {
     id: "1",
     name: "Clínica Veterinária Pet Care",
@@ -18,6 +13,9 @@ const clinics = [
     rating: 4.8,
     reviews: 247,
     address: "Rua das Flores, 123 - Vila Madalena",
+    city: "São Paulo",
+    state: "SP",
+    neighborhood: "Vila Madalena",
     specialties: ["Clínica Geral", "Cirurgia", "Dermatologia"],
     isOpen: true,
     image: "",
@@ -32,6 +30,9 @@ const clinics = [
     rating: 4.9,
     reviews: 156,
     address: "Av. Paulista, 567 - Cerqueira César",
+    city: "São Paulo",
+    state: "SP",
+    neighborhood: "Cerqueira César",
     specialties: ["Emergência", "Cardiologia", "Neurologia"],
     isOpen: true,
     image: "",
@@ -46,6 +47,9 @@ const clinics = [
     rating: 4.7,
     reviews: 89,
     address: "Av. Faria Lima, 999 - Itaim Bibi",
+    city: "São Paulo",
+    state: "SP",
+    neighborhood: "Itaim Bibi",
     specialties: ["Clínica Geral", "Ortopedia"],
     isOpen: false,
     image: "",
@@ -60,6 +64,9 @@ const clinics = [
     rating: 4.9,
     reviews: 423,
     address: "Av. Rebouças, 1567 - Pinheiros",
+    city: "São Paulo",
+    state: "SP",
+    neighborhood: "Pinheiros",
     specialties: ["UTI", "Cirurgia", "Emergência"],
     isOpen: true,
     image: "",
@@ -68,192 +75,108 @@ const clinics = [
   }
 ];
 
-// Lista única de especialidades
 export const CLINIC_SPECIALTIES = Array.from(new Set(clinics.flatMap(c => c.specialties)));
 
 const FeaturedClinics = () => {
   const { favorites } = useFavorites();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'all' | 'favorites' | 'emergency' | 'tickets'>('all');
-  const [userTickets, setUserTickets] = useState<any[]>([]);
   const [forceUpdate, setForceUpdate] = useState(false);
 
-  // Load user tickets from localStorage and listen to search updates
   useEffect(() => {
-    const tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
-    setUserTickets(tickets);
-
-    // Atualiza a lista quando os filtros mudam
-    const handleStorageChange = () => {
-      // Força uma atualização do componente quando os filtros mudam
-      setForceUpdate(prev => !prev);
-    };
-
+    const handleStorageChange = () => setForceUpdate(prev => !prev);
     window.addEventListener('storage', handleStorageChange);
-    // Também escuta o evento customizado do SearchSection
-    window.addEventListener('localStorageChange', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('localStorageChange', handleStorageChange);
-    };
-  }, [user]);
-
-  // Geolocalização do usuário
-  const [userLocation, setUserLocation] = useState<{lat:number, lng:number} | null>(null);
-  
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        },
-        () => {
-          setUserLocation(null);
-        }
-      );
-    }
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Função para calcular distância entre dois pontos
-  function getDistance(lat1:number, lng1:number, lat2:number, lng2:number) {
-    function toRad(x:number) { return x * Math.PI / 180; }
-    const R = 6371; // km
-    const dLat = toRad(lat2-lat1);
-    const dLng = toRad(lng2-lng1);
-    const a = Math.sin(dLat/2)*Math.sin(dLat/2) +
-              Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)*Math.sin(dLng/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
+  // Normaliza strings: remove acentos, caracteres especiais e unifica espaços
+  function normalize(str: string) {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')       // remove acentos
+      .replace(/[^a-zA-Z0-9]/g, ' ')           // não alfanuméricos para espaço
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, ' ');
   }
 
   function getFilteredClinics() {
-    let filtered = clinics;
-    // Filtros do SearchSection
-    const searchLocation = localStorage.getItem('search_location')?.trim().toLowerCase() || '';
-    const searchSpecialty = localStorage.getItem('search_specialty')?.trim() || '';
+    const rawLocation = localStorage.getItem('search_location') || '';
+    const rawSpecialty = localStorage.getItem('search_specialty') || '';
+    const loc = normalize(rawLocation);
+    const spec = normalize(rawSpecialty);
 
-    // Filtrar por especialidade
-    if (searchSpecialty) {
-      filtered = filtered.filter(clinic => clinic.specialties.includes(searchSpecialty));
-    }
-    // Filtrar por localização textual (bairro, cidade ou CEP)
-    if (searchLocation) {
-      const searchTerms = searchLocation.toLowerCase().split(/[\s,-]+/); // Divide por espaços, vírgulas ou hífens
-      filtered = filtered.filter(clinic => {
-        const addressLower = clinic.address.toLowerCase();
-        // Verifica se todos os termos da busca estão presentes no endereço
-        return searchTerms.every(term => addressLower.includes(term));
-      });
-    }
+    return clinics.filter(clinic => {
+      // Junta campos relevantes para busca
+      const combined = [
+        clinic.name,
+        clinic.city,
+        clinic.state,
+        clinic.neighborhood,
+        clinic.address,
+        ...clinic.specialties,
+      ]
+        .map(normalize)
+        .join(' ');
 
-    switch (activeTab) {
-      case 'favorites':
-        filtered = filtered.filter(clinic => favorites.includes(clinic.id));
-        break;
-      case 'emergency':
-        filtered = filtered.filter(clinic => clinic.emergency);
-        break;
-      case 'tickets':
-        filtered = [];
-        break;
-      default:
-        break;
-    }
-    
-    // Ordenar por distância se userLocation disponível
-    if (userLocation) {
-      filtered = [...filtered].sort((a, b) => {
-        const distA = getDistance(userLocation.lat, userLocation.lng, a.lat, a.lng);
-        const distB = getDistance(userLocation.lat, userLocation.lng, b.lat, b.lng);
-        return distA - distB;
-      });
-    }
-    return filtered;
+      // Filtro de localização inteligente
+      const matchesLocation = loc === '' || combined.includes(loc);
+
+      // Filtro de especialidade ou nome
+      const matchesSpecialty = spec === '' ||
+        clinic.specialties.map(normalize).some(s => s.includes(spec)) ||
+        normalize(clinic.name).includes(spec);
+
+      return matchesLocation && matchesSpecialty;
+    });
   }
 
   const filteredClinics = getFilteredClinics();
 
-  return (
-    <section id="featured-clinics" className="apple-bg py-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex space-x-4 mb-6 justify-center">
-          <button
-            className={`apple-btn px-6 py-2 rounded-full ${activeTab === 'all' ? 'bg-[#007aff] text-white' : 'bg-white text-[#007aff] border border-[#e5e7eb]'}`}
-            onClick={() => setActiveTab('all')}>
-            Todas
-          </button>
-          <button
-            className={`apple-btn px-6 py-2 rounded-full ${activeTab === 'favorites' ? 'bg-[#007aff] text-white' : 'bg-white text-[#007aff] border border-[#e5e7eb]'}`}
-            onClick={() => setActiveTab('favorites')}>
-            Favoritas
-          </button>
-          <button
-            className={`apple-btn px-6 py-2 rounded-full ${activeTab === 'emergency' ? 'bg-[#007aff] text-white' : 'bg-white text-[#007aff] border border-[#e5e7eb]'}`}
-            onClick={() => setActiveTab('emergency')}>
-            Emergência
-          </button>
-          <button
-            className={`apple-btn px-6 py-2 rounded-full ${activeTab === 'tickets' ? 'bg-[#007aff] text-white' : 'bg-white text-[#007aff] border border-[#e5e7eb]'}`}
-            onClick={() => setActiveTab('tickets')}>
-            Tickets
-          </button>
-        </div>
+  const handleClearFilters = () => {
+    localStorage.removeItem('search_location');
+    localStorage.removeItem('search_specialty');
+    setForceUpdate(prev => !prev);
+  };
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {activeTab === 'tickets' ? (
-            userTickets.length > 0 ? (
-              userTickets.map((ticket) => (
-                <Card key={ticket.id} className="apple-card">
-                  <CardHeader>
-                    <CardTitle>{ticket.petName}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Clock className="w-4 h-4 mr-2" />
-                        {new Date(ticket.createdAt).toLocaleDateString('pt-BR')}
-                      </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {ticket.description}
-                      </p>
-                      <Button 
-                        size="sm" 
-                        className="w-full mt-2"
-                        onClick={() => navigate(`/chat/${ticket.id}`)}
-                      >
-                        <MessageSquare className="w-4 h-4 mr-2" /> Conversar
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12">
-                <p className="text-muted-foreground text-lg">Você ainda não possui tickets abertos.</p>
-              </div>
-            )
-          ) : filteredClinics.length > 0 ? (
-            filteredClinics.map((clinic) => {
-              let distance = '';
-              if (userLocation) {
-                const dist = getDistance(userLocation.lat, userLocation.lng, clinic.lat, clinic.lng);
-                distance = dist < 1 ? `${Math.round(dist * 1000)}m` : `${dist.toFixed(1)}km`;
-              }
-              return <ClinicCard key={clinic.id} {...clinic} distance={distance} />;
-            })
-          ) : (
-            <div className="col-span-full text-center py-12">
-              <p className="text-muted-foreground text-lg">
-                {activeTab === 'favorites' 
-                  ? 'Você ainda não tem clínicas favoritas.' 
-                  : 'Nenhuma clínica de emergência encontrada.'}
-              </p>
-            </div>
-          )}
-        </div>
+  return (
+    <section className="py-6 px-4 md:px-8">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-foreground">
+          Clínicas encontradas: {filteredClinics.length}
+        </h2>
+        <button
+          onClick={handleClearFilters}
+          className="text-sm text-blue-600 underline hover:text-blue-800 transition"
+        >
+          Limpar busca
+        </button>
       </div>
+
+      {filteredClinics.length === 0 ? (
+        <p className="text-center mt-8 text-lg">
+          Nenhuma clínica cadastrada na região
+        </p>
+      ) : (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {filteredClinics.map(clinic => (
+            <ClinicCard
+              key={clinic.id}
+              id={clinic.id}
+              name={clinic.name}
+              rating={clinic.rating}
+              reviews={clinic.reviews}
+              address={clinic.address}
+              distance="-- km"
+              specialties={clinic.specialties}
+              isOpen={clinic.isOpen}
+              image={clinic.image}
+              emergency={clinic.emergency}
+              phone={clinic.phone}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 };

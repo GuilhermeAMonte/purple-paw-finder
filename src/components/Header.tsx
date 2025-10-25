@@ -23,7 +23,21 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3 smooth-transition hover:opacity-80">
+          <Link 
+            to="/" 
+            className="flex items-center space-x-3 smooth-transition hover:opacity-80"
+            onClick={() => {
+              // Limpa os filtros no localStorage
+              localStorage.removeItem('search_location');
+              localStorage.removeItem('search_specialty');
+              
+              // Dispara evento para atualizar os componentes
+              window.dispatchEvent(new Event('localStorageChange'));
+              
+              // Rola para o topo da página
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          >
             <div className="w-9 h-9 bg-foreground rounded-full flex items-center justify-center">
               <PawPrint className="w-5 h-5 text-background" />
             </div>

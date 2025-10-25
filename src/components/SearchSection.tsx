@@ -1,26 +1,100 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, MapPin } from 'lucide-react';
-import { CLINIC_SPECIALTIES } from './FeaturedClinics';
+import { CLINIC_SPECIALTIES, clinics } from './FeaturedClinics';
 
 const SearchSection = () => {
   const [location, setLocation] = useState('');
   const [specialty, setSpecialty] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [noResults, setNoResults] = useState(false);
+
+  // Função para normalizar texto
+  const normalize = (str: string) =>
+    str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+  // Gera todas as sugestões possíveis
+  const allLocations = Array.from(new Set(
+    clinics.flatMap((c: any) => [
+      c.neighborhood && c.city && c.state ? `${c.neighborhood} - ${c.city}, ${c.state}` : '',
+      c.city && c.state ? `${c.city} - ${c.state}` : '',
+      c.city ? c.city : '',
+      c.state ? c.state : '',
+      c.neighborhood ? c.neighborhood : '',
+    ]).filter((v): v is string => typeof v === 'string' && v.length > 0)
+  ));
+
+  // Função para verificar se o termo de busca corresponde à localização da clínica
+  const matchLocation = (searchTerm: string, clinic: any) => {
+    const searchNorm = normalize(searchTerm);
+    const clinicFull = normalize(
+      [clinic.neighborhood, clinic.city, clinic.state].filter(Boolean).join(' ')
+    );
+    return clinicFull.includes(searchNorm);
+  };
+
+  // Atualiza sugestões conforme digitação
+  useEffect(() => {
+    if (!location.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setNoResults(false);
+      return;
+    }
+
+    const matchingClinics = clinics.filter(clinic =>
+      matchLocation(location, clinic)
+    );
+
+    if (matchingClinics.length === 0) {
+      const generic = allLocations.filter(loc =>
+        normalize(loc).includes(normalize(location))
+      );
+      setSuggestions(generic);
+      setShowSuggestions(generic.length > 0);
+      setNoResults(true);
+      return;
+    }
+
+    const clinicSuggestions = Array.from(new Set(
+      matchingClinics.flatMap(c => [
+        c.neighborhood && c.city && c.state ? `${c.neighborhood} - ${c.city}, ${c.state}` : '',
+        c.city && c.state ? `${c.city} - ${c.state}` : '',
+        c.city ? c.city : '',
+        c.state ? c.state : '',
+        c.neighborhood ? c.neighborhood : ''
+      ]).filter(v => v)
+    ));
+
+    setSuggestions(clinicSuggestions);
+    setShowSuggestions(clinicSuggestions.length > 0);
+    setNoResults(false);
+  }, [location]);
+
+  // Escuta mudanças no localStorage
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedLocation = localStorage.getItem('search_location') || '';
+      const savedSpecialty = localStorage.getItem('search_specialty') || '';
+      setLocation(savedLocation);
+      setSpecialty(savedSpecialty);
+    };
+
+    window.addEventListener('localStorageChange', handleStorageChange);
+    return () => window.removeEventListener('localStorageChange', handleStorageChange);
+  }, []);
 
   // Callback para busca
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // Salva filtros em localStorage para FeaturedClinics consumir
     localStorage.setItem('search_location', location);
     localStorage.setItem('search_specialty', specialty);
-    
-    // Dispara evento customizado para notificar mudanças
+
     const event = new Event('localStorageChange');
     window.dispatchEvent(event);
-    
-    // Rola até a seção de resultados
+
     const featuredSection = document.querySelector('#featured-clinics');
     if (featuredSection) {
       featuredSection.scrollIntoView({ behavior: 'smooth' });
@@ -48,11 +122,35 @@ const SearchSection = () => {
             <div className="relative">
               <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
               <Input
-                placeholder="Sua localização (bairro, cidade ou CEP)"
+                placeholder="Sua localização (bairro, cidade ou estado)"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
+                onFocus={() => setShowSuggestions(suggestions.length > 0)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                autoComplete="off"
                 className="pl-12 h-14 rounded-xl border-border/30 bg-background/80 text-lg font-light focus:ring-2 focus:ring-primary/20 focus:border-primary/40 smooth-transition"
               />
+              {showSuggestions && (
+                <ul className="absolute left-0 right-0 top-full mt-2 bg-white border rounded-xl shadow-lg z-20 max-h-60 overflow-auto text-left">
+                  {suggestions.map((s, idx) => (
+                    <li
+                      key={s + idx}
+                      className="px-4 py-2 cursor-pointer hover:bg-primary/10"
+                      onMouseDown={() => {
+                        setLocation(s);
+                        setShowSuggestions(false);
+                      }}
+                    >
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!showSuggestions && noResults && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Nenhuma clínica cadastrada na região
+                </p>
+              )}
             </div>
             <div className="relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
