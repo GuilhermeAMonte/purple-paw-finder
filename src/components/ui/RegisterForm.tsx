@@ -26,11 +26,11 @@ export const RegisterForm = () => {
   return (
     <div className="apple-bg">
       <form className="apple-card" onSubmit={handleSubmit}>
-        <h2 style={{fontWeight:700, fontSize:'2rem', marginBottom:'1.5rem', letterSpacing:'-1px'}}>Cadastrar</h2>
+        <h2 style={{fontWeight:700, fontSize:'2rem', marginBottom:'1.5rem', letterSpacing:'-1px'}}>Register</h2>
         <input
           className="apple-input"
           type="text"
-          placeholder="Nome"
+          placeholder="Name"
           value={name}
           onChange={e => setName(e.target.value)}
           required
@@ -38,7 +38,7 @@ export const RegisterForm = () => {
         <input
           className="apple-input"
           type="email"
-          placeholder="E-mail"
+          placeholder="Email"
           value={email}
           onChange={e => setEmail(e.target.value)}
           required
@@ -47,7 +47,7 @@ export const RegisterForm = () => {
         <input
           className="apple-input"
           type="password"
-          placeholder="Senha"
+          placeholder="Password"
           value={password}
           onChange={e => setPassword(e.target.value)}
           required
@@ -59,8 +59,8 @@ export const RegisterForm = () => {
           onChange={e => setUserType(e.target.value as 'client' | 'clinic')}
           style={{marginTop:'1rem'}}
         >
-          <option value="client">Cliente</option>
-          <option value="clinic">Clínica</option>
+          <option value="client">Client</option>
+          <option value="clinic">Clinic</option>
         </select>
         {userType === 'clinic' && (
           <select
@@ -75,7 +75,7 @@ export const RegisterForm = () => {
             <option value="experience">Experience</option>
           </select>
         )}
-        <button className="apple-btn" type="submit" style={{marginTop:'2rem'}}>Cadastrar</button>
+        <button className="apple-btn" type="submit" style={{marginTop:'2rem'}}>Register</button>
         {error && <div className="apple-error">{error}</div>}
         {success && <div className="apple-success">{success}</div>}
       </form>

@@ -20,11 +20,11 @@ export const LoginForm = () => {
   return (
     <div className="apple-bg">
       <form className="apple-card" onSubmit={handleSubmit}>
-        <h2 style={{fontWeight:700, fontSize:'2rem', marginBottom:'1.5rem', letterSpacing:'-1px'}}>Entrar</h2>
+        <h2 style={{fontWeight:700, fontSize:'2rem', marginBottom:'1.5rem', letterSpacing:'-1px'}}>Login</h2>
         <input
           className="apple-input"
           type="email"
-          placeholder="E-mail"
+          placeholder="Email"
           value={email}
           onChange={e => setEmail(e.target.value)}
           required
@@ -32,13 +32,13 @@ export const LoginForm = () => {
         <input
           className="apple-input"
           type="password"
-          placeholder="Senha"
+          placeholder="Password"
           value={password}
           onChange={e => setPassword(e.target.value)}
           required
           style={{marginTop:'1rem'}}
         />
-        <button className="apple-btn" type="submit" style={{marginTop:'2rem'}}>Entrar</button>
+        <button className="apple-btn" type="submit" style={{marginTop:'2rem'}}>Login</button>
         {error && <div className="apple-error">{error}</div>}
       </form>
     </div>

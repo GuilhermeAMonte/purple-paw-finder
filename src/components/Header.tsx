@@ -56,7 +56,7 @@ const Header = () => {
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition cursor-pointer"
             >
-              Buscar
+              Search
             </a>
             <a 
               href="#emergency" 
@@ -68,7 +68,7 @@ const Header = () => {
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition cursor-pointer"
             >
-              Emergência
+              Emergency
             </a>
             <a 
               href="#tickets" 
@@ -92,7 +92,7 @@ const Header = () => {
               }}
               className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition cursor-pointer"
             >
-              Favoritos
+              Favorites
             </a>
           </nav>
 
@@ -120,7 +120,7 @@ const Header = () => {
                       className="text-sm rounded-lg smooth-transition cursor-pointer"
                     >
                       <Settings className="w-4 h-4 mr-2" />
-                      Meu Perfil
+                      My Profile
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem 
@@ -128,7 +128,7 @@ const Header = () => {
                     className="text-sm rounded-lg smooth-transition"
                   >
                     <LogOut className="w-4 h-4 mr-2" />
-                    Sair
+                    Logout
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -140,7 +140,7 @@ const Header = () => {
                   className="text-foreground hover:bg-muted/50 smooth-transition rounded-full px-4 py-2"
                 >
                   <User className="w-4 h-4 mr-2" />
-                  Entrar
+                  Login
                 </Button>
               </Link>
             )}

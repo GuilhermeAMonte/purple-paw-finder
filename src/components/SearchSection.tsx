@@ -11,11 +11,11 @@ const SearchSection = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [noResults, setNoResults] = useState(false);
 
-  // Função para normalizar texto
+  // Function to normalize text
   const normalize = (str: string) =>
     str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-  // Gera todas as sugestões possíveis
+  // Generate all possible suggestions
   const allLocations = Array.from(new Set(
     clinics.flatMap((c: any) => [
       c.neighborhood && c.city && c.state ? `${c.neighborhood} - ${c.city}, ${c.state}` : '',
@@ -26,7 +26,7 @@ const SearchSection = () => {
     ]).filter((v): v is string => typeof v === 'string' && v.length > 0)
   ));
 
-  // Função para verificar se o termo de busca corresponde à localização da clínica
+  // Function to check if search term matches clinic location
   const matchLocation = (searchTerm: string, clinic: any) => {
     const searchNorm = normalize(searchTerm);
     const clinicFull = normalize(
@@ -35,7 +35,7 @@ const SearchSection = () => {
     return clinicFull.includes(searchNorm);
   };
 
-  // Atualiza sugestões conforme digitação
+  // Update suggestions while typing
   useEffect(() => {
     if (!location.trim()) {
       setSuggestions([]);
@@ -73,7 +73,7 @@ const SearchSection = () => {
     setNoResults(false);
   }, [location]);
 
-  // Escuta mudanças no localStorage
+  // Listen to localStorage changes
   useEffect(() => {
     const handleStorageChange = () => {
       const savedLocation = localStorage.getItem('search_location') || '';
@@ -86,7 +86,7 @@ const SearchSection = () => {
     return () => window.removeEventListener('localStorageChange', handleStorageChange);
   }, []);
 
-  // Callback para busca
+  // Search callback
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     localStorage.setItem('search_location', location);
@@ -108,12 +108,12 @@ const SearchSection = () => {
       <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
         <div className="animate-fade-in">
           <h1 className="text-5xl md:text-7xl font-light text-foreground mb-6 leading-tight tracking-tight">
-            Cuidado veterinário
+            Veterinary care
             <br />
-            <span className="font-medium text-primary">próximo de você</span>
+            <span className="font-medium text-primary">close to you</span>
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed font-light">
-            Com o Paw Connect, encontre os melhores profissionais para o cuidado do seu pet
+            With Paw Connect, find the best professionals for your pet's care
           </p>
         </div>
 
@@ -122,7 +122,7 @@ const SearchSection = () => {
             <div className="relative">
               <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
               <Input
-                placeholder="Sua localização (bairro, cidade ou estado)"
+                placeholder="Your location (neighborhood, city or state)"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 onFocus={() => setShowSuggestions(suggestions.length > 0)}
@@ -148,7 +148,7 @@ const SearchSection = () => {
               )}
               {!showSuggestions && noResults && (
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Nenhuma clínica cadastrada na região
+                  No clinics registered in this region
                 </p>
               )}
             </div>
@@ -159,7 +159,7 @@ const SearchSection = () => {
                 onChange={e => setSpecialty(e.target.value)}
                 className="pl-12 h-14 rounded-xl border border-border/30 bg-background/80 text-lg font-light w-full focus:ring-2 focus:ring-primary/20 focus:border-primary/40 smooth-transition"
               >
-                <option value="">Todas as especialidades</option>
+                <option value="">All specialties</option>
                 {CLINIC_SPECIALTIES.map((spec) => (
                   <option key={spec} value={spec}>{spec}</option>
                 ))}
@@ -172,7 +172,7 @@ const SearchSection = () => {
             className="w-full h-14 text-lg font-medium rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl smooth-transition hover-lift"
           >
             <Search className="w-5 h-5 mr-3" />
-            Buscar clínicas veterinárias
+            Search veterinary clinics
           </Button>
         </form>
       </div>

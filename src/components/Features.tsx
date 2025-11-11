@@ -6,33 +6,33 @@ const Features = () => {
   const features = [
     {
       icon: MapPin,
-      title: "Localização precisa",
-      description: "Encontre clínicas próximas com precisão de GPS e navegação integrada"
+      title: "Precise Location",
+      description: "Find nearby clinics with GPS accuracy and integrated navigation"
     },
     {
       icon: Clock,
-      title: "Informações atualizadas",
-      description: "Horários de funcionamento e disponibilidade em tempo real"
+      title: "Updated Information",
+      description: "Operating hours and real-time availability"
     },
     {
       icon: Star,
-      title: "Avaliações verificadas",
-      description: "Reviews autênticas de tutores reais para sua escolha informada"
+      title: "Verified Reviews",
+      description: "Authentic reviews from real pet owners for informed choices"
     },
     {
       icon: Phone,
-      title: "Contato direto",
-      description: "Comunicação instantânea com as clínicas por telefone ou mensagem"
+      title: "Direct Contact",
+      description: "Instant communication with clinics via phone or message"
     },
     {
       icon: Heart,
-      title: "Lista personalizada",
-      description: "Salve suas clínicas favoritas para acesso rápido quando precisar"
+      title: "Personalized List",
+      description: "Save your favorite clinics for quick access when needed"
     },
     {
       icon: Shield,
-      title: "Emergência garantida",
-      description: "Identificação rápida de clínicas de plantão e atendimento 24 horas"
+      title: "Guaranteed Emergency",
+      description: "Quick identification of on-call clinics and 24-hour service"
     }
   ];
 
@@ -41,10 +41,10 @@ const Features = () => {
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center mb-20 animate-fade-in">
           <h2 className="text-4xl md:text-5xl font-semibold text-foreground mb-6 leading-tight">
-            Por que escolher o VetFind?
+            Why choose VetFind?
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            A plataforma mais completa e confiável para encontrar cuidados veterinários de excelência
+            The most complete and reliable platform to find excellent veterinary care
           </p>
         </div>
 

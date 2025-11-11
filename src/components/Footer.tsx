@@ -15,8 +15,8 @@ const Footer = () => {
               <h3 className="text-xl font-semibold">Paw Connect</h3>
             </div>
             <p className="text-background/70 mb-8 max-w-md leading-relaxed text-lg">
-              Conectando tutores aos melhores cuidados veterinários. 
-              Encontre profissionais qualificados próximos a você de forma simples e confiável.
+              Connecting pet owners to the best veterinary care. 
+              Find qualified professionals near you in a simple and reliable way.
             </p>
             <div className="flex space-x-4">
               <div className="w-12 h-12 bg-background/10 rounded-full flex items-center justify-center hover:bg-background/20 smooth-transition cursor-pointer">
@@ -33,30 +33,30 @@ const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-lg font-semibold mb-6">Navegação</h4>
+            <h4 className="text-lg font-semibold mb-6">Navigation</h4>
             <ul className="space-y-4 text-background/70">
-              <li><a href="#" className="hover:text-background smooth-transition">Buscar Clínicas</a></li>
-              <li><a href="#" className="hover:text-background smooth-transition">Emergência 24h</a></li>
-              <li><a href="#" className="hover:text-background smooth-transition">Cadastrar Clínica</a></li>
-              <li><a href="#" className="hover:text-background smooth-transition">Sobre Nós</a></li>
-              <li><a href="#" className="hover:text-background smooth-transition">Contato</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">Search Clinics</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">24h Emergency</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">Register Clinic</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">About Us</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">Contact</a></li>
             </ul>
           </div>
 
           {/* Support */}
           <div>
-            <h4 className="text-lg font-semibold mb-6">Suporte</h4>
+            <h4 className="text-lg font-semibold mb-6">Support</h4>
             <ul className="space-y-4 text-background/70">
-              <li><a href="#" className="hover:text-background smooth-transition">Central de Ajuda</a></li>
-              <li><a href="#" className="hover:text-background smooth-transition">Termos de Uso</a></li>
-              <li><a href="#" className="hover:text-background smooth-transition">Política de Privacidade</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">Help Center</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">Terms of Use</a></li>
+              <li><a href="#" className="hover:text-background smooth-transition">Privacy Policy</a></li>
               <li><a href="#" className="hover:text-background smooth-transition">FAQ</a></li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-background/20 pt-8 text-center text-background/60">
-          <p>&copy; 2024 Paw Connect. Todos os direitos reservados.</p>
+          <p>&copy; 2024 Paw Connect. All rights reserved.</p>
         </div>
       </div>
     </footer>

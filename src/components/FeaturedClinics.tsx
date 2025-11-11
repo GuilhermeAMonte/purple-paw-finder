@@ -89,7 +89,7 @@ const FeaturedClinics = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Normaliza strings: remove acentos, caracteres especiais e unifica espaços
+  // Normalize strings: remove accents, special characters and unify spaces
   function normalize(str: string) {
     return str
       .normalize('NFD')
@@ -107,7 +107,7 @@ const FeaturedClinics = () => {
     const spec = normalize(rawSpecialty);
 
     return clinics.filter(clinic => {
-      // Junta campos relevantes para busca
+      // Join relevant fields for search
       const combined = [
         clinic.name,
         clinic.city,
@@ -119,10 +119,10 @@ const FeaturedClinics = () => {
         .map(normalize)
         .join(' ');
 
-      // Filtro de localização inteligente
+      // Smart location filter
       const matchesLocation = loc === '' || combined.includes(loc);
 
-      // Filtro de especialidade ou nome
+      // Specialty or name filter
       const matchesSpecialty = spec === '' ||
         clinic.specialties.map(normalize).some(s => s.includes(spec)) ||
         normalize(clinic.name).includes(spec);
@@ -143,19 +143,19 @@ const FeaturedClinics = () => {
     <section className="py-6 px-4 md:px-8">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-foreground">
-          Clínicas encontradas: {filteredClinics.length}
+          Clinics found: {filteredClinics.length}
         </h2>
         <button
           onClick={handleClearFilters}
           className="text-sm text-blue-600 underline hover:text-blue-800 transition"
         >
-          Limpar busca
+          Clear search
         </button>
       </div>
 
       {filteredClinics.length === 0 ? (
         <p className="text-center mt-8 text-lg">
-          Nenhuma clínica cadastrada na região
+          No clinics registered in this region
         </p>
       ) : (
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">

@@ -23,7 +23,7 @@ const TicketsList = () => {
   }, []);
 
   if (tickets.length === 0) {
-    return <p className="text-muted-foreground text-center">Nenhum chamado aberto.</p>;
+    return <p className="text-muted-foreground text-center">No open tickets.</p>;
   }
 
   return (
@@ -33,10 +33,10 @@ const TicketsList = () => {
           <div>
             <div className="font-semibold text-lg text-foreground">{ticket.title}</div>
             <div className="text-sm text-muted-foreground">{ticket.clinicName} • {ticket.service}</div>
-            <div className="text-xs text-muted-foreground mt-1">Aberto em {ticket.createdAt}</div>
+            <div className="text-xs text-muted-foreground mt-1">Opened on {ticket.createdAt}</div>
           </div>
           <Button className="mt-2 md:mt-0" onClick={() => navigate(`/chat/${ticket.id}`)}>
-            Abrir chat
+            Open chat
           </Button>
         </div>
       ))}

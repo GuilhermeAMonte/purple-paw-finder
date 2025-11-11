@@ -82,7 +82,7 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
             }`}
           >
             <Clock className="w-3 h-3 mr-1" />
-            {isOpen ? "Aberto" : "Fechado"}
+            {isOpen ? "Open" : "Closed"}
           </Badge>
         </div>
 
@@ -144,7 +144,7 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
             }}
             className="flex-1 bg-foreground text-background hover:bg-foreground/90 rounded-xl smooth-transition font-medium"
           >
-            Ver detalhes
+            View details
           </Button>
           {phone && (
             <Button 

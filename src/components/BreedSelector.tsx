@@ -49,7 +49,7 @@ const BreedSelector: React.FC<BreedSelectorProps> = ({
         disabled={true}
         className="w-full justify-between text-muted-foreground"
       >
-        Primeiro selecione uma espécie
+        First select a species
         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </Button>
     );
@@ -65,18 +65,18 @@ const BreedSelector: React.FC<BreedSelectorProps> = ({
           disabled={disabled}
           className="w-full justify-between"
         >
-          {selectedBreed || "Selecione uma raça..."}
+          {selectedBreed || "Select a breed..."}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
         <Command>
           <CommandInput 
-            placeholder="Buscar raça..." 
+            placeholder="Search breed..." 
             className="h-9" 
           />
           <CommandList>
-            <CommandEmpty>Nenhuma raça encontrada.</CommandEmpty>
+            <CommandEmpty>No breed found.</CommandEmpty>
             <CommandGroup>
               {breeds.map((breed) => (
                 <CommandItem
