@@ -28,6 +28,17 @@ const specialties = [
   'Odontologia Veterinária'
 ];
 
+const animalTypes = [
+  { value: 'dog', label: 'Cachorro' },
+  { value: 'cat', label: 'Gato' },
+  { value: 'bird', label: 'Pássaro' },
+  { value: 'rabbit', label: 'Coelho' },
+  { value: 'hamster', label: 'Hamster' },
+  { value: 'fish', label: 'Peixe' },
+  { value: 'reptile', label: 'Réptil' },
+  { value: 'other', label: 'Outros' }
+];
+
 const ClinicSetup = () => {
   const [formData, setFormData] = useState({
     clinicName: '',
@@ -39,7 +50,8 @@ const ClinicSetup = () => {
     cep: '',
     description: '',
     is24Hours: false,
-    specialties: [] as string[]
+    specialties: [] as string[],
+    animalTypes: [] as string[]
   });
   const [isLoading, setIsLoading] = useState(false);
   const { updateUserProfile, user } = useAuth();
@@ -128,6 +140,16 @@ const ClinicSetup = () => {
       toast({
         title: "Erro",
         description: "Selecione pelo menos uma especialidade.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    if (formData.animalTypes.length === 0) {
+      toast({
+        title: "Erro",
+        description: "Selecione pelo menos um tipo de animal atendido.",
         variant: "destructive",
       });
       setIsLoading(false);
@@ -319,6 +341,30 @@ const ClinicSetup = () => {
                   <Clock className="w-4 h-4" />
                   <span>Atendimento 24 horas (para emergências)</span>
                 </Label>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-gray-700">Tipos de Animais Atendidos * (selecione pelo menos um)</Label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {animalTypes.map((animal) => (
+                    <div key={animal.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={animal.value}
+                        checked={formData.animalTypes.includes(animal.value)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFormData({ ...formData, animalTypes: [...formData.animalTypes, animal.value] });
+                          } else {
+                            setFormData({ ...formData, animalTypes: formData.animalTypes.filter(a => a !== animal.value) });
+                          }
+                        }}
+                      />
+                      <Label htmlFor={animal.value} className="text-sm text-gray-700 cursor-pointer">
+                        {animal.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-3">

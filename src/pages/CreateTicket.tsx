@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Upload, X } from 'lucide-react';
+import { ArrowLeft, Upload, X, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -45,45 +45,18 @@ const CreateTicket = () => {
     petWeight: '',
     petColor: '',
     petNotes: '',
-    ownerName: '',
-    ownerPhone: '',
-    ownerEmail: '',
-    ownerCep: '',
-    ownerEstado: '',
-    ownerCidade: '',
-    ownerRua: '',
-    ownerNumero: ''
+    scheduledDate: '',
+    scheduledTime: ''
   });
 
-  // Atualizar dados do tutor quando o usuário estiver disponível
-  useEffect(() => {
-    if (user?.id) {
-      console.log('Usuário logado:', user);
-      const phone = localStorage.getItem(`phone_${user.id}`);
-      const cep = localStorage.getItem(`cep_${user.id}`);
-      const estado = localStorage.getItem(`estado_${user.id}`);
-      const cidade = localStorage.getItem(`cidade_${user.id}`);
-      const rua = localStorage.getItem(`rua_${user.id}`);
-      const numero = localStorage.getItem(`numero_${user.id}`);
-      
-      console.log('Dados do localStorage:', { phone, cep, estado, cidade, rua, numero });
-      
-      setFormData(prev => ({
-        ...prev,
-        ownerName: user.name || '',
-        ownerPhone: phone || '',
-        ownerEmail: user.email || '',
-        ownerCep: cep || '',
-        ownerEstado: estado || '',
-        ownerCidade: cidade || '',
-        ownerRua: rua || '',
-        ownerNumero: numero || ''
-      }));
-    }
-  }, [user]);
+
   
 
   const [file, setFile] = useState<File | null>(null);
+  const [availableTimes] = useState([
+    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
+  ]);
 
   // Seleciona automaticamente o pet recém-cadastrado se vier de /profile
   const location = useLocation();
@@ -204,8 +177,16 @@ const CreateTicket = () => {
       return;
     }
 
-    // Validar se há informações do pet
-    if (!formData.petName || !formData.petSpecies) {
+    if (!formData.scheduledDate || !formData.scheduledTime) {
+      toast({
+        title: "Erro",
+        description: "Por favor, selecione data e horário.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedPet && (!formData.petName || !formData.petSpecies)) {
       toast({
         title: "Erro",
         description: "Informações do pet são obrigatórias",
@@ -214,15 +195,7 @@ const CreateTicket = () => {
       return;
     }
 
-    // Validar se há informações do tutor
-    if (!formData.ownerName || !formData.ownerPhone || !formData.ownerEmail || !formData.ownerCep || !formData.ownerEstado || !formData.ownerCidade || !formData.ownerRua || !formData.ownerNumero) {
-      toast({
-        title: "Erro",
-        description: "Informações completas do tutor são obrigatórias",
-        variant: "destructive",
-      });
-      return;
-    }
+
 
     if (formData.service !== "Clínica Geral" && !file) {
       toast({
@@ -233,26 +206,43 @@ const CreateTicket = () => {
       return;
     }
 
-    // Gerar ID único para o ticket
     const ticketId = Date.now().toString();
 
-    // Salvar ticket no localStorage
-    const tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
-    saveTicket({
+    const ticketData = {
       id: ticketId,
+      clinicId: id,
       clinicName: clinic.name,
+      userId: user?.id,
+      userName: user?.name,
       service: formData.service,
       title: formData.title,
-      createdAt: new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
-      status: 'open',
-    });
+      description: formData.description,
+      petInfo: selectedPet || {
+        name: formData.petName,
+        species: formData.petSpecies,
+        breed: formData.petBreed,
+        age: formData.petAge,
+        weight: formData.petWeight,
+        color: formData.petColor,
+        notes: formData.petNotes
+      },
+      scheduledDate: formData.scheduledDate,
+      scheduledTime: formData.scheduledTime,
+      createdAt: new Date().toISOString(),
+      status: 'pending_approval',
+      approvalStatus: 'pending'
+    };
+
+    const tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
+    tickets.push(ticketData);
+    localStorage.setItem('tickets', JSON.stringify(tickets));
+
     toast({
-      title: "Chamado criado com sucesso!",
-      description: "Sua solicitação foi enviada para a clínica veterinária.",
+      title: "Agendamento solicitado!",
+      description: "Aguarde a aprovação da clínica.",
     });
 
-    // Redirecionar para o chat
-    navigate(`/chat/${ticketId}`);
+    navigate('/');
   };
 
   const needsReferral = formData.service && formData.service !== "Clínica Geral";
@@ -375,246 +365,208 @@ const CreateTicket = () => {
                     />
                   </div>
 
-                  {/* Informações do Pet */}
+                  {/* Agendamento */}
                   <div className="space-y-4">
-                    <Label className="text-base font-medium text-foreground">
-                      Informações do Pet *
+                    <Label className="text-base font-medium text-foreground flex items-center gap-2">
+                      <Calendar className="w-5 h-5" />
+                      Agendar Consulta *
                     </Label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="petName" className="text-sm font-medium text-foreground mb-2 block">
-                          Nome do Pet
+                        <Label htmlFor="scheduledDate" className="text-sm font-medium text-foreground mb-2 block">
+                          Data
                         </Label>
                         <Input
-                          id="petName"
-                          name="petName"
-                          value={formData.petName}
+                          id="scheduledDate"
+                          name="scheduledDate"
+                          type="date"
+                          value={formData.scheduledDate}
                           onChange={handleInputChange}
-                          placeholder="Nome do seu pet"
+                          min={new Date().toISOString().split('T')[0]}
                           className="h-10 rounded-xl border-border/50"
                           required
                         />
                       </div>
                       <div>
-                        <Label htmlFor="petSpecies" className="text-sm font-medium text-foreground mb-2 block">
-                          Espécie
+                        <Label htmlFor="scheduledTime" className="text-sm font-medium text-foreground mb-2 block">
+                          Horário
                         </Label>
-                        <Select value={formData.petSpecies} onValueChange={(value) => setFormData(prev => ({ ...prev, petSpecies: value, petBreed: '' }))}>
+                        <Select value={formData.scheduledTime} onValueChange={(value) => setFormData(prev => ({ ...prev, scheduledTime: value }))}>
                           <SelectTrigger className="h-10 rounded-xl border-border/50">
-                            <SelectValue placeholder="Selecione a espécie" />
+                            <SelectValue placeholder="Selecione o horário" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Cachorro">Cachorro</SelectItem>
-                            <SelectItem value="Gato">Gato</SelectItem>
-                            <SelectItem value="Pássaro">Pássaro</SelectItem>
-                            <SelectItem value="Coelho">Coelho</SelectItem>
-                            <SelectItem value="Hamster">Hamster</SelectItem>
-                            <SelectItem value="Peixe">Peixe</SelectItem>
-                            <SelectItem value="Réptil">Réptil</SelectItem>
-                            <SelectItem value="Outro">Outro</SelectItem>
+                            {availableTimes.map((time) => (
+                              <SelectItem key={time} value={time}>{time}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                       <div>
-                         <Label htmlFor="petBreed" className="text-sm font-medium text-foreground mb-2 block">
-                           Raça
-                         </Label>
-                         <BreedSelector
-                           species={formData.petSpecies === 'Cachorro' ? 'dog' : formData.petSpecies === 'Gato' ? 'cat' : formData.petSpecies.toLowerCase()}
-                           value={formData.petBreed}
-                           onChange={(value) => setFormData(prev => ({ ...prev, petBreed: value }))}
-                           disabled={!formData.petSpecies}
-                         />
-                       </div>
-                      <div>
-                        <Label htmlFor="petAge" className="text-sm font-medium text-foreground mb-2 block">
-                          Idade
-                        </Label>
-                        <Input
-                          id="petAge"
-                          name="petAge"
-                          value={formData.petAge}
-                          onChange={handleInputChange}
-                          placeholder="Ex: 2 anos"
-                          className="h-10 rounded-xl border-border/50"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="petWeight" className="text-sm font-medium text-foreground mb-2 block">
-                          Peso
-                        </Label>
-                         <Input
-                           id="petWeight"
-                           name="petWeight"
-                           value={formData.petWeight}
-                           onChange={handleWeightChange}
-                           placeholder="Ex: 15"
-                           className="h-10 rounded-xl border-border/50"
-                         />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="petColor" className="text-sm font-medium text-foreground mb-2 block">
-                        Cor
-                      </Label>
-                      <Input
-                        id="petColor"
-                        name="petColor"
-                        value={formData.petColor}
-                        onChange={handleInputChange}
-                        placeholder="Ex: Marrom e branco"
-                        className="h-10 rounded-xl border-border/50"
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="petNotes" className="text-sm font-medium text-foreground mb-2 block">
-                        Observações sobre o Pet
-                      </Label>
-                      <Textarea
-                        id="petNotes"
-                        name="petNotes"
-                        value={formData.petNotes}
-                        onChange={handleInputChange}
-                        placeholder="Comportamento, alergias, medicamentos em uso, etc."
-                        rows={3}
-                        className="rounded-xl border-border/50 resize-none"
-                      />
-                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      A clínica irá revisar e aprovar seu agendamento.
+                    </p>
                   </div>
 
-                  {/* Informações do Proprietário */}
-                  <div className="space-y-4">
-                     <Label className="text-base font-medium text-foreground">
-                       Informações do Tutor *
-                     </Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="ownerName" className="text-sm font-medium text-foreground mb-2 block">
-                          Nome Completo
-                        </Label>
-                        <Input
-                          id="ownerName"
-                          name="ownerName"
-                          value={formData.ownerName}
-                          onChange={handleInputChange}
-                          placeholder="Seu nome completo"
-                          className="h-10 rounded-xl border-border/50"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="ownerPhone" className="text-sm font-medium text-foreground mb-2 block">
-                          Telefone
-                        </Label>
-                        <Input
-                          id="ownerPhone"
-                          name="ownerPhone"
-                          value={formData.ownerPhone}
-                          onChange={handleInputChange}
-                          placeholder="(11) 99999-9999"
-                          className="h-10 rounded-xl border-border/50"
-                          required
-                        />
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="ownerEmail" className="text-sm font-medium text-foreground mb-2 block">
-                        Email
+                  {/* Informações do Pet */}
+                  {!selectedPet ? (
+                    <div className="space-y-4">
+                      <Label className="text-base font-medium text-foreground">
+                        Informações do Pet *
                       </Label>
-                      <Input
-                        id="ownerEmail"
-                        name="ownerEmail"
-                        type="email"
-                        value={formData.ownerEmail}
-                        onChange={handleInputChange}
-                        placeholder="seu@email.com"
-                        className="h-10 rounded-xl border-border/50"
-                        required
-                      />
-                    </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="petName" className="text-sm font-medium text-foreground mb-2 block">
+                            Nome do Pet
+                          </Label>
+                          <Input
+                            id="petName"
+                            name="petName"
+                            value={formData.petName}
+                            onChange={handleInputChange}
+                            placeholder="Nome do seu pet"
+                            className="h-10 rounded-xl border-border/50"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="petSpecies" className="text-sm font-medium text-foreground mb-2 block">
+                            Espécie
+                          </Label>
+                          <Select value={formData.petSpecies} onValueChange={(value) => setFormData(prev => ({ ...prev, petSpecies: value, petBreed: '' }))}>
+                            <SelectTrigger className="h-10 rounded-xl border-border/50">
+                              <SelectValue placeholder="Selecione a espécie" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Cachorro">Cachorro</SelectItem>
+                              <SelectItem value="Gato">Gato</SelectItem>
+                              <SelectItem value="Pássaro">Pássaro</SelectItem>
+                              <SelectItem value="Coelho">Coelho</SelectItem>
+                              <SelectItem value="Hamster">Hamster</SelectItem>
+                              <SelectItem value="Peixe">Peixe</SelectItem>
+                              <SelectItem value="Réptil">Réptil</SelectItem>
+                              <SelectItem value="Outro">Outro</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                         <div>
+                           <Label htmlFor="petBreed" className="text-sm font-medium text-foreground mb-2 block">
+                             Raça
+                           </Label>
+                           <BreedSelector
+                             species={formData.petSpecies === 'Cachorro' ? 'dog' : formData.petSpecies === 'Gato' ? 'cat' : formData.petSpecies.toLowerCase()}
+                             value={formData.petBreed}
+                             onChange={(value) => setFormData(prev => ({ ...prev, petBreed: value }))}
+                             disabled={!formData.petSpecies}
+                           />
+                         </div>
+                        <div>
+                          <Label htmlFor="petAge" className="text-sm font-medium text-foreground mb-2 block">
+                            Idade
+                          </Label>
+                          <Input
+                            id="petAge"
+                            name="petAge"
+                            value={formData.petAge}
+                            onChange={handleInputChange}
+                            placeholder="Ex: 2 anos"
+                            className="h-10 rounded-xl border-border/50"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="petWeight" className="text-sm font-medium text-foreground mb-2 block">
+                            Peso
+                          </Label>
+                           <Input
+                             id="petWeight"
+                             name="petWeight"
+                             value={formData.petWeight}
+                             onChange={handleWeightChange}
+                             placeholder="Ex: 15"
+                             className="h-10 rounded-xl border-border/50"
+                           />
+                        </div>
+                      </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <Label htmlFor="ownerCep" className="text-sm font-medium text-foreground mb-2 block">
-                          CEP
+                        <Label htmlFor="petColor" className="text-sm font-medium text-foreground mb-2 block">
+                          Cor
                         </Label>
                         <Input
-                          id="ownerCep"
-                          name="ownerCep"
-                          value={formData.ownerCep}
+                          id="petColor"
+                          name="petColor"
+                          value={formData.petColor}
                           onChange={handleInputChange}
-                          placeholder="00000-000"
+                          placeholder="Ex: Marrom e branco"
                           className="h-10 rounded-xl border-border/50"
-                          required
                         />
                       </div>
-                      <div>
-                        <Label htmlFor="ownerEstado" className="text-sm font-medium text-foreground mb-2 block">
-                          Estado
-                        </Label>
-                        <Input
-                          id="ownerEstado"
-                          name="ownerEstado"
-                          value={formData.ownerEstado}
-                          onChange={handleInputChange}
-                          placeholder="Estado"
-                          className="h-10 rounded-xl border-border/50"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="ownerCidade" className="text-sm font-medium text-foreground mb-2 block">
-                          Cidade
-                        </Label>
-                        <Input
-                          id="ownerCidade"
-                          name="ownerCidade"
-                          value={formData.ownerCidade}
-                          onChange={handleInputChange}
-                          placeholder="Cidade"
-                          className="h-10 rounded-xl border-border/50"
-                          required
-                        />
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="col-span-2">
-                        <Label htmlFor="ownerRua" className="text-sm font-medium text-foreground mb-2 block">
-                          Rua/Avenida
-                        </Label>
-                        <Input
-                          id="ownerRua"
-                          name="ownerRua"
-                          value={formData.ownerRua}
-                          onChange={handleInputChange}
-                          placeholder="Nome da rua ou avenida"
-                          className="h-10 rounded-xl border-border/50"
-                          required
-                        />
-                      </div>
                       <div>
-                        <Label htmlFor="ownerNumero" className="text-sm font-medium text-foreground mb-2 block">
-                          Número
+                        <Label htmlFor="petNotes" className="text-sm font-medium text-foreground mb-2 block">
+                          Observações sobre o Pet
                         </Label>
-                        <Input
-                          id="ownerNumero"
-                          name="ownerNumero"
-                          value={formData.ownerNumero}
+                        <Textarea
+                          id="petNotes"
+                          name="petNotes"
+                          value={formData.petNotes}
                           onChange={handleInputChange}
-                          placeholder="123"
-                          className="h-10 rounded-xl border-border/50"
-                          required
+                          placeholder="Comportamento, alergias, medicamentos em uso, etc."
+                          rows={3}
+                          className="rounded-xl border-border/50 resize-none"
                         />
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="bg-muted/30 rounded-xl p-6 border border-border/40">
+                      <Label className="text-base font-medium text-foreground mb-4 block">
+                        Informações do Pet Selecionado
+                      </Label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Nome:</span>
+                          <p className="font-medium text-foreground">{selectedPet.name}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Espécie:</span>
+                          <p className="font-medium text-foreground">{selectedPet.species === 'dog' ? 'Cachorro' : selectedPet.species === 'cat' ? 'Gato' : selectedPet.species}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Raça:</span>
+                          <p className="font-medium text-foreground">{selectedPet.breed}</p>
+                        </div>
+                        {selectedPet.age && (
+                          <div>
+                            <span className="text-muted-foreground">Idade:</span>
+                            <p className="font-medium text-foreground">{selectedPet.age}</p>
+                          </div>
+                        )}
+                        {selectedPet.weight && (
+                          <div>
+                            <span className="text-muted-foreground">Peso:</span>
+                            <p className="font-medium text-foreground">{selectedPet.weight}</p>
+                          </div>
+                        )}
+                        {selectedPet.color && (
+                          <div>
+                            <span className="text-muted-foreground">Cor:</span>
+                            <p className="font-medium text-foreground">{selectedPet.color}</p>
+                          </div>
+                        )}
+                      </div>
+                      {selectedPet.notes && (
+                        <div className="mt-4">
+                          <span className="text-muted-foreground text-sm">Observações:</span>
+                          <p className="text-foreground mt-1">{selectedPet.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+
 
                   {/* Upload de arquivo para serviços especializados */}
                   {needsReferral && (

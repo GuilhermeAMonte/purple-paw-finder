@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { PawPrint, User, LogOut, Settings, Ticket } from 'lucide-react';
+import { PawPrint, User, LogOut, Settings, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,55 +46,7 @@ const Header = () => {
             </h1>
           </Link>
 
-          {/* Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <a 
-              href="#search" 
-              onClick={(e) => {
-                e.preventDefault();
-                document.querySelector('#search')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition cursor-pointer"
-            >
-              Search
-            </a>
-            <a 
-              href="#emergency" 
-              onClick={(e) => {
-                e.preventDefault();
-                const event = new CustomEvent('setClinicTab', { detail: 'emergency' });
-                document.dispatchEvent(event);
-                document.querySelector('#clinics')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition cursor-pointer"
-            >
-              Emergency
-            </a>
-            <a 
-              href="#tickets" 
-              onClick={(e) => {
-                e.preventDefault();
-                const event = new CustomEvent('setClinicTab', { detail: 'tickets' });
-                document.dispatchEvent(event);
-                document.querySelector('#clinics')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition cursor-pointer"
-            >
-              Tickets
-            </a>
-            <a 
-              href="#favorites" 
-              onClick={(e) => {
-                e.preventDefault();
-                const event = new CustomEvent('setClinicTab', { detail: 'favorites' });
-                document.dispatchEvent(event);
-                document.querySelector('#clinics')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground smooth-transition cursor-pointer"
-            >
-              Favorites
-            </a>
-          </nav>
+
 
           {/* User Actions */}
           <div className="flex items-center space-x-4">
@@ -123,6 +75,28 @@ const Header = () => {
                       My Profile
                     </Link>
                   </DropdownMenuItem>
+                  {user?.userType === 'client' && (
+                    <DropdownMenuItem asChild>
+                      <Link 
+                        to="/my-appointments"
+                        className="text-sm rounded-lg smooth-transition cursor-pointer"
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        My Appointments
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {user?.userType === 'clinic' && (
+                    <DropdownMenuItem asChild>
+                      <Link 
+                        to="/clinic-dashboard"
+                        className="text-sm rounded-lg smooth-transition cursor-pointer"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem 
                     onClick={logout}
                     className="text-sm rounded-lg smooth-transition"

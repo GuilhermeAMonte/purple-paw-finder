@@ -188,7 +188,7 @@ const Register = () => {
         <div className="mb-8 text-center">
           <Link to="/" className="inline-flex items-center text-purple-600 hover:text-purple-700 mb-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar ao início
+            Back to home
           </Link>
           
           <div className="flex items-center justify-center space-x-2 mb-2">
@@ -196,19 +196,19 @@ const Register = () => {
               <Heart className="w-7 h-7 text-white" />
             </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent">
-              VetFind
+              Paw Connect
             </h1>
           </div>
-          <p className="text-gray-600">Crie sua conta</p>
+          <p className="text-gray-600">Create your account</p>
         </div>
 
         <Card className="shadow-lg border-purple-100">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl text-center text-gray-800">
-              Criar Conta
+              Create Account
             </CardTitle>
             <CardDescription className="text-center text-gray-600">
-              Preencha os dados para criar sua conta
+              Fill in the details to create your account
             </CardDescription>
           </CardHeader>
           
@@ -216,8 +216,14 @@ const Register = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Seleção do tipo de usuário */}
               <div className="space-y-3">
-                <Label className="text-gray-700">Tipo de conta</Label>
-                <RadioGroup defaultValue="client" value={userType} onValueChange={(value: 'client' | 'clinic') => setUserType(value)} className="flex space-x-4">
+                <Label className="text-gray-700">Account type</Label>
+                <RadioGroup defaultValue="clinic" value={userType} onValueChange={(value: 'client' | 'clinic') => {
+                  if (value === 'client') {
+                    navigate('/client-register');
+                  } else {
+                    setUserType(value);
+                  }
+                }} className="flex space-x-4">
                   <label
                     className={`flex items-center space-x-2 border-2 rounded-lg p-4 flex-1 cursor-pointer transition-all duration-200 ease-in-out transform hover:shadow-md
                       ${userType === 'client' 
@@ -235,8 +241,8 @@ const Register = () => {
                     <div className="flex-1">
                       <span className={`font-medium transition-colors duration-200 ${
                         userType === 'client' ? 'text-purple-700' : 'text-gray-700'
-                      }`}>Cliente</span>
-                      <p className="text-xs text-gray-500">Buscar clínicas veterinárias</p>
+                      }`}>Client</span>
+                      <p className="text-xs text-gray-500">Find veterinary clinics</p>
                     </div>
                   </label>
                   <label
@@ -256,8 +262,8 @@ const Register = () => {
                     <div className="flex-1">
                       <span className={`font-medium transition-colors duration-200 ${
                         userType === 'clinic' ? 'text-purple-700' : 'text-gray-700'
-                      }`}>Clínica</span>
-                      <p className="text-xs text-gray-500">Gerenciar clínica veterinária</p>
+                      }`}>Clinic</span>
+                      <p className="text-xs text-gray-500">Manage veterinary clinic</p>
                     </div>
                   </label>
                 </RadioGroup>
@@ -266,7 +272,7 @@ const Register = () => {
               {/* Seleção de plano para clínicas */}
               {userType === 'clinic' && (
                 <div className="space-y-3 mt-6 animate-in fade-in slide-in-from-top-4 duration-300">
-                  <Label className="text-gray-700">Selecione seu plano</Label>
+                  <Label className="text-gray-700">Select your plan</Label>
                   <RadioGroup 
                     value={selectedPlan} 
                     onValueChange={(value: 'free' | 'basic' | 'intermediary' | 'experience') => setSelectedPlan(value)} 
@@ -276,13 +282,13 @@ const Register = () => {
                       <RadioGroupItem value="free" className="absolute right-4 top-4" />
                       <div className="mb-2">
                         <h3 className="text-lg font-semibold text-gray-800">Free</h3>
-                        <p className="text-sm text-gray-500">Comece gratuitamente</p>
+                        <p className="text-sm text-gray-500">Start for free</p>
                       </div>
                       <div className="text-2xl font-bold text-purple-600 mb-4">$0</div>
                       <ul className="text-sm text-gray-600 space-y-2">
                         <li className="flex items-center">
                           <Check className="w-4 h-4 text-green-500 mr-2" />
-                          Recursos básicos
+                          Basic features
                         </li>
                       </ul>
                     </label>
@@ -292,7 +298,7 @@ const Register = () => {
                       <RadioGroupItem value="basic" className="absolute right-4 top-4" />
                       <div className="mb-2">
                         <h3 className="text-lg font-semibold text-gray-800">Basic</h3>
-                        <p className="text-sm text-gray-500">Para clínicas iniciantes</p>
+                        <p className="text-sm text-gray-500">For starter clinics</p>
                       </div>
                       <div className="flex items-baseline mb-4">
                         <span className="text-2xl font-bold text-purple-600">$10</span>
@@ -302,11 +308,11 @@ const Register = () => {
                       <ul className="text-sm text-gray-600 space-y-2">
                         <li className="flex items-center">
                           <Check className="w-4 h-4 text-green-500 mr-2" />
-                          Todos os recursos Free
+                          All Free features
                         </li>
                         <li className="flex items-center">
                           <Check className="w-4 h-4 text-green-500 mr-2" />
-                          Suporte prioritário
+                          Priority support
                         </li>
                       </ul>
                     </label>
@@ -315,8 +321,8 @@ const Register = () => {
                     <label className="relative flex flex-col border-2 rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md border-transparent hover:border-purple-200">
                       <RadioGroupItem value="intermediary" className="absolute right-4 top-4" />
                       <div className="mb-2">
-                        <h3 className="text-lg font-semibold text-gray-800">Intermediário</h3>
-                        <p className="text-sm text-gray-500">Para clínicas em crescimento</p>
+                        <h3 className="text-lg font-semibold text-gray-800">Intermediate</h3>
+                        <p className="text-sm text-gray-500">For growing clinics</p>
                       </div>
                       <div className="flex items-baseline mb-4">
                         <span className="text-2xl font-bold text-purple-600">$25</span>
@@ -326,11 +332,11 @@ const Register = () => {
                       <ul className="text-sm text-gray-600 space-y-2">
                         <li className="flex items-center">
                           <Check className="w-4 h-4 text-green-500 mr-2" />
-                          Todos os recursos Basic
+                          All Basic features
                         </li>
                         <li className="flex items-center">
                           <Check className="w-4 h-4 text-green-500 mr-2" />
-                          Análise avançada
+                          Advanced analytics
                         </li>
                       </ul>
                     </label>
@@ -340,7 +346,7 @@ const Register = () => {
                       <RadioGroupItem value="experience" className="absolute right-4 top-4" />
                       <div className="mb-2">
                         <h3 className="text-lg font-semibold text-gray-800">Experience</h3>
-                        <p className="text-sm text-gray-500">Recursos completos</p>
+                        <p className="text-sm text-gray-500">Complete features</p>
                       </div>
                       <div className="flex items-baseline mb-4">
                         <span className="text-2xl font-bold text-purple-600">$50</span>
@@ -350,15 +356,15 @@ const Register = () => {
                       <ul className="text-sm text-gray-600 space-y-2">
                         <li className="flex items-center">
                           <Check className="w-4 h-4 text-green-500 mr-2" />
-                          Todos os recursos Intermediário
+                          All Intermediate features
                         </li>
                         <li className="flex items-center">
                           <Check className="w-4 h-4 text-green-500 mr-2" />
-                          Suporte 24/7
+                          24/7 Support
                         </li>
                         <li className="flex items-center">
                           <Check className="w-4 h-4 text-green-500 mr-2" />
-                          Recursos exclusivos
+                          Exclusive features
                         </li>
                       </ul>
                     </label>
@@ -367,13 +373,13 @@ const Register = () => {
               )}
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-gray-700">
-                  Nome completo
+                  Full name
                 </Label>
                 <Input
                   id="name"
                   name="name"
                   type="text"
-                  placeholder="Seu nome completo"
+                  placeholder="Your full name"
                   value={formData.name}
                   onChange={handleInputChange}
                   required
@@ -390,7 +396,7 @@ const Register = () => {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="seu@email.com"
+                  placeholder="your@email.com"
                   value={formData.email}
                   onChange={handleInputChange}
                   required
@@ -401,7 +407,7 @@ const Register = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="phone" className="text-gray-700">
-                  Telefone
+                  Phone
                 </Label>
                 <Input
                   id="phone"
@@ -418,7 +424,7 @@ const Register = () => {
 
               {/* Campos de Endereço */}
               <div className="space-y-4 pt-4 border-t border-purple-100">
-                <h3 className="text-lg font-semibold text-gray-800">Endereço</h3>
+                <h3 className="text-lg font-semibold text-gray-800">Address</h3>
                 
                 <div className="space-y-2">
                   <Label htmlFor="cep" className="text-gray-700">
@@ -440,7 +446,7 @@ const Register = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="estado" className="text-gray-700">
-                      Estado
+                      State
                     </Label>
                     <Input
                       id="estado"
@@ -457,13 +463,13 @@ const Register = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="cidade" className="text-gray-700">
-                      Cidade
+                      City
                     </Label>
                     <Input
                       id="cidade"
                       name="cidade"
                       type="text"
-                      placeholder="Sua cidade"
+                      placeholder="Your city"
                       value={formData.cidade}
                       onChange={handleInputChange}
                       required
@@ -474,13 +480,13 @@ const Register = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="rua" className="text-gray-700">
-                    Rua/Avenida
+                    Street/Avenue
                   </Label>
                   <Input
                     id="rua"
                     name="rua"
                     type="text"
-                    placeholder="Nome da rua ou avenida"
+                    placeholder="Street or avenue name"
                     value={formData.rua}
                     onChange={handleInputChange}
                     required
@@ -490,13 +496,13 @@ const Register = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="numero" className="text-gray-700">
-                    Número
+                    Number
                   </Label>
                   <Input
                     id="numero"
                     name="numero"
                     type="text"
-                    placeholder="Número da residência"
+                    placeholder="House number"
                     value={formData.numero}
                     onChange={handleInputChange}
                     required
@@ -541,23 +547,23 @@ const Register = () => {
                   <div className="mt-2 space-y-1 text-xs">
                     <div className={`flex items-center ${passwordValidation.minLength ? 'text-green-600' : 'text-red-600'}`}>
                       {passwordValidation.minLength ? <Check className="w-3 h-3 mr-1" /> : <X className="w-3 h-3 mr-1" />}
-                      Mínimo 8 caracteres
+                      Minimum 8 characters
                     </div>
                     <div className={`flex items-center ${passwordValidation.hasUpperCase ? 'text-green-600' : 'text-red-600'}`}>
                       {passwordValidation.hasUpperCase ? <Check className="w-3 h-3 mr-1" /> : <X className="w-3 h-3 mr-1" />}
-                      Uma letra maiúscula
+                      One uppercase letter
                     </div>
                     <div className={`flex items-center ${passwordValidation.hasLowerCase ? 'text-green-600' : 'text-red-600'}`}>
                       {passwordValidation.hasLowerCase ? <Check className="w-3 h-3 mr-1" /> : <X className="w-3 h-3 mr-1" />}
-                      Uma letra minúscula
+                      One lowercase letter
                     </div>
                     <div className={`flex items-center ${passwordValidation.hasNumber ? 'text-green-600' : 'text-red-600'}`}>
                       {passwordValidation.hasNumber ? <Check className="w-3 h-3 mr-1" /> : <X className="w-3 h-3 mr-1" />}
-                      Um número
+                      One number
                     </div>
                     <div className={`flex items-center ${passwordValidation.hasSpecialChar ? 'text-green-600' : 'text-red-600'}`}>
                       {passwordValidation.hasSpecialChar ? <Check className="w-3 h-3 mr-1" /> : <X className="w-3 h-3 mr-1" />}
-                      Um caractere especial
+                      One special character
                     </div>
                   </div>
                 )}
@@ -596,7 +602,7 @@ const Register = () => {
                 {formData.confirmPassword && (
                   <div className={`flex items-center text-xs mt-1 ${passwordsMatch ? 'text-green-600' : 'text-red-600'}`}>
                     {passwordsMatch ? <Check className="w-3 h-3 mr-1" /> : <X className="w-3 h-3 mr-1" />}
-                    Senhas coincidem
+                    Passwords match
                   </div>
                 )}
               </div>
@@ -606,18 +612,18 @@ const Register = () => {
                 className="w-full gradient-purple text-white hover:opacity-90 transition-opacity"
                 disabled={isLoading || !isPasswordValid || !passwordsMatch}
               >
-                {isLoading ? "Criando conta..." : "Criar conta"}
+                {isLoading ? "Creating account..." : "Create account"}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Já tem uma conta?{' '}
+                Already have an account?{' '}
                 <Link
                   to="/login"
                   className="text-purple-600 hover:text-purple-700 font-medium hover:underline"
                 >
-                  Faça login
+                  Sign in
                 </Link>
               </p>
             </div>
@@ -625,7 +631,7 @@ const Register = () => {
         </Card>
 
         <div className="mt-6 text-center text-xs text-gray-500">
-          <p>🔒 Suas informações estão protegidas com criptografia de ponta a ponta</p>
+          <p>🔒 Your information is protected with end-to-end encryption</p>
         </div>
       </div>
     </div>

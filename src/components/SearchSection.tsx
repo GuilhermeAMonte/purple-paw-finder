@@ -86,7 +86,6 @@ const SearchSection = () => {
     return () => window.removeEventListener('localStorageChange', handleStorageChange);
   }, []);
 
-  // Search callback
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     localStorage.setItem('search_location', location);
@@ -95,10 +94,12 @@ const SearchSection = () => {
     const event = new Event('localStorageChange');
     window.dispatchEvent(event);
 
-    const featuredSection = document.querySelector('#featured-clinics');
-    if (featuredSection) {
-      featuredSection.scrollIntoView({ behavior: 'smooth' });
-    }
+    setTimeout(() => {
+      const resultsSection = document.querySelector('#clinics-results');
+      if (resultsSection) {
+        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   return (

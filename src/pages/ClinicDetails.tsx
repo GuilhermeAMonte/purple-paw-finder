@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, MapPin, Clock, Phone, Heart, Shield } from 'lucide-react';
+import { ArrowLeft, Star, MapPin, Clock, Phone, Heart, Shield, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
@@ -64,13 +64,20 @@ const ClinicDetails = () => {
             Voltar
           </Button>
 
-          {/* Botão Abrir Chamado */}
-          <div className="mb-8">
+          {/* Botões de Contato */}
+          <div className="mb-8 flex gap-4">
             <Button
               onClick={() => navigate(`/clinic/${id}/create-ticket`)}
               className="bg-primary text-white hover:bg-primary/90 px-8 py-3 rounded-2xl text-lg font-medium apple-shadow"
             >
-              Entrar em contato
+              Contato Normal
+            </Button>
+            <Button
+              onClick={() => navigate(`/clinic/${id}/chat?emergency=true`)}
+              className="bg-red-500 text-white hover:bg-red-600 px-8 py-3 rounded-2xl text-lg font-medium apple-shadow"
+            >
+              <AlertCircle className="w-5 h-5 mr-2" />
+              Emergência
             </Button>
           </div>
 

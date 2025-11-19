@@ -10,44 +10,48 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Heart, Phone, Users, MessageSquare, Settings, LogOut, Clock, MapPin, Calendar, Send, Edit3, UserCheck } from 'lucide-react';
+import { Heart, Phone, Users, MessageSquare, Settings, LogOut, Clock, MapPin, Calendar, Send, Edit3, UserCheck, AlertCircle, CheckSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import AppointmentApproval from '@/components/AppointmentApproval';
 
 // Mock data para demonstração
 const mockClients = [
   {
     id: 1,
     name: 'Maria Silva',
-    pet: 'Rex (Cão)',
+    pet: 'Rex (Dog)',
     lastContact: '2024-01-15',
-    status: 'Aguardando resposta',
-    message: 'Preciso agendar uma consulta para vacinação do meu cachorro.'
+    status: 'Awaiting response',
+    message: 'I need to schedule an appointment for my dog\'s vaccination.',
+    isEmergency: false
   },
   {
     id: 2,
     name: 'João Santos',
-    pet: 'Mimi (Gato)',
+    pet: 'Mimi (Cat)',
     lastContact: '2024-01-14',
-    status: 'Respondido',
-    message: 'Minha gata está com comportamento estranho, não quer comer.'
+    status: 'Responded',
+    message: 'My cat is behaving strangely, doesn\'t want to eat.',
+    isEmergency: false
   },
   {
     id: 3,
     name: 'Ana Costa',
-    pet: 'Bolt (Cão)',
+    pet: 'Bolt (Dog)',
     lastContact: '2024-01-13',
-    status: 'Novo',
-    message: 'Emergência! Meu cachorro foi atropelado.'
+    status: 'New',
+    message: 'Emergency! My dog was hit by a car.',
+    isEmergency: true
   }
 ];
 
 const specialties = [
-  'Clínica Geral', 'Cirurgia', 'Cardiologia', 'Dermatologia', 'Oftalmologia',
-  'Oncologia', 'Ortopedia', 'Neurologia', 'Emergência', 'Vacinação',
-  'Exames Laboratoriais', 'Ultrassonografia', 'Radiologia', 'Fisioterapia', 'Odontologia Veterinária'
+  'General Practice', 'Surgery', 'Cardiology', 'Dermatology', 'Ophthalmology',
+  'Oncology', 'Orthopedics', 'Neurology', 'Emergency', 'Vaccination',
+  'Laboratory Tests', 'Ultrasound', 'Radiology', 'Physiotherapy', 'Veterinary Dentistry'
 ];
 
 // Mock data para agendamentos
@@ -57,59 +61,131 @@ const mockAppointments = [
     date: '2024-01-15',
     time: '09:00',
     client: 'Maria Silva',
-    pet: 'Rex (Cão)',
+    pet: 'Rex (Dog)',
     doctor: 'Dr. João Santos',
-    specialty: 'Clínica Geral',
-    status: 'Confirmado'
+    specialty: 'General Practice',
+    status: 'Confirmed'
   },
   {
     id: 2,
     date: '2024-01-15',
     time: '10:30',
     client: 'Ana Costa',
-    pet: 'Mimi (Gato)',
-    doctor: 'Dra. Carla Lima',
-    specialty: 'Vacinação',
-    status: 'Confirmado'
+    pet: 'Mimi (Cat)',
+    doctor: 'Dr. Carla Lima',
+    specialty: 'Vaccination',
+    status: 'Confirmed'
   },
   {
     id: 3,
     date: '2024-01-16',
     time: '14:00',
     client: 'Pedro Oliveira',
-    pet: 'Bolt (Cão)',
+    pet: 'Bolt (Dog)',
     doctor: 'Dr. João Santos',
-    specialty: 'Cirurgia',
-    status: 'Pendente'
+    specialty: 'Surgery',
+    status: 'Pending'
   },
   {
     id: 4,
     date: '2024-01-16',
     time: '15:30',
     client: 'Lucia Fernandes',
-    pet: 'Whiskers (Gato)',
-    doctor: 'Dra. Maria Souza',
-    specialty: 'Dermatologia',
-    status: 'Confirmado'
+    pet: 'Whiskers (Cat)',
+    doctor: 'Dr. Maria Souza',
+    specialty: 'Dermatology',
+    status: 'Confirmed'
   },
   {
     id: 5,
     date: '2024-01-17',
     time: '08:30',
     client: 'Roberto Silva',
-    pet: 'Luna (Cão)',
+    pet: 'Luna (Dog)',
     doctor: 'Dr. João Santos',
-    specialty: 'Exames Laboratoriais',
-    status: 'Confirmado'
+    specialty: 'Laboratory Tests',
+    status: 'Confirmed'
   }
 ];
 
 const ClinicDashboard = () => {
   const { user, logout, updateUserProfile } = useAuth();
   const [selectedClient, setSelectedClient] = useState(mockClients[0]);
-  const [currentSection, setCurrentSection] = useState('contatos');
+  const [currentSection, setCurrentSection] = useState('aprovacoes');
+  const [pendingAppointments, setPendingAppointments] = useState<any[]>([]);
+
+  useEffect(() => {
+    const tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
+    setPendingAppointments(tickets.filter((t: any) => t.approvalStatus === 'pending'));
+  }, []);
+
+  const handleApproveAppointment = (id: string) => {
+    const tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
+    const updatedTickets = tickets.map((t: any) => 
+      t.id === id ? { ...t, approvalStatus: 'approved', status: 'confirmed' } : t
+    );
+    localStorage.setItem('tickets', JSON.stringify(updatedTickets));
+    setPendingAppointments(updatedTickets.filter((t: any) => t.approvalStatus === 'pending'));
+  };
+
+  const handleRejectAppointment = (id: string, reason: string) => {
+    const tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
+    const updatedTickets = tickets.map((t: any) => 
+      t.id === id ? { ...t, approvalStatus: 'rejected', status: 'rejected', rejectionReason: reason } : t
+    );
+    localStorage.setItem('tickets', JSON.stringify(updatedTickets));
+    setPendingAppointments(updatedTickets.filter((t: any) => t.approvalStatus === 'pending'));
+    
+    // Criar chat automático com a mensagem de recusa
+    const rejectedTicket = tickets.find((t: any) => t.id === id);
+    if (rejectedTicket) {
+      const chatId = `chat_${id}`;
+      const chatMessages = [
+        {
+          id: Date.now().toString(),
+          text: `Seu agendamento para ${new Date(rejectedTicket.scheduledDate).toLocaleDateString('pt-BR')} às ${rejectedTicket.scheduledTime} foi recusado.\n\nMotivo: ${reason}`,
+          sender: 'clinic',
+          timestamp: new Date().toISOString(),
+          type: 'system'
+        }
+      ];
+      localStorage.setItem(chatId, JSON.stringify(chatMessages));
+    }
+  };
   const [replyMessage, setReplyMessage] = useState('');
-  const [messages, setMessages] = useState<{[key: number]: any[]}>({});
+  const [messages, setMessages] = useState<{[key: number]: any[]}>({
+    1: [
+      {
+        id: 1,
+        text: 'I need to schedule an appointment for my dog\'s vaccination.',
+        timestamp: '2024-01-15 14:30',
+        sender: 'client'
+      }
+    ],
+    2: [
+      {
+        id: 1,
+        text: 'My cat is behaving strangely, doesn\'t want to eat.',
+        timestamp: '2024-01-14 10:15',
+        sender: 'client'
+      },
+      {
+        id: 2,
+        text: 'Hello! We can schedule for tomorrow at 3pm. Please bring the vaccination card.',
+        timestamp: '2024-01-14 15:45',
+        sender: 'clinic'
+      }
+    ],
+    3: [
+      {
+        id: 1,
+        text: 'Emergency! My dog was hit by a car.',
+        timestamp: '2024-01-13 09:20',
+        sender: 'client'
+      }
+    ]
+  });
+  const [hasReplied, setHasReplied] = useState<{[key: number]: boolean}>({});
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
@@ -151,27 +227,36 @@ const ClinicDashboard = () => {
     const newMessage = {
       id: Date.now(),
       text: replyMessage,
-      timestamp: new Date().toLocaleString(),
+      timestamp: new Date().toLocaleString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
       sender: 'clinic'
     };
     
-    setMessages(prev => ({
-      ...prev,
-      [selectedClient.id]: [...(prev[selectedClient.id] || []), newMessage]
-    }));
+    const clientId = selectedClient.id;
+    const currentMessages = messages[clientId] || [];
+    const updatedMessages = [...currentMessages, newMessage];
+    
+    console.log('Sending message:', newMessage);
+    console.log('Updated messages:', updatedMessages);
+    
+    setMessages({
+      ...messages,
+      [clientId]: updatedMessages
+    });
     
     setReplyMessage('');
-    toast({
-      title: "Mensagem enviada",
-      description: "Sua resposta foi enviada com sucesso.",
-    });
   };
 
   const handleScheduleAppointment = () => {
     if (!scheduleData.date || !scheduleData.time || !scheduleData.specialty) {
       toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios.",
+        title: "Error",
+        description: "Please fill in all required fields.",
         variant: "destructive",
       });
       return;
@@ -183,9 +268,9 @@ const ClinicDashboard = () => {
       time: scheduleData.time,
       client: selectedClient.name,
       pet: selectedClient.pet,
-      doctor: 'Dr. João Santos', // Pode ser selecionado dinamicamente
+      doctor: 'Dr. João Santos', // Can be selected dynamically
       specialty: scheduleData.specialty,
-      status: 'Confirmado'
+      status: 'Confirmed'
     };
 
     setAppointments(prev => [...prev, newAppointment]);
@@ -193,8 +278,8 @@ const ClinicDashboard = () => {
     setScheduleData({ date: '', time: '', specialty: '' });
     
     toast({
-      title: "Agendamento criado",
-      description: `Consulta agendada para ${selectedClient.name} em ${format(new Date(scheduleData.date), "dd/MM/yyyy")} às ${scheduleData.time}.`,
+      title: "Appointment created",
+      description: `Appointment scheduled for ${selectedClient.name} on ${format(new Date(scheduleData.date), "MM/dd/yyyy")} at ${scheduleData.time}.`,
     });
   };
 
@@ -211,10 +296,12 @@ const ClinicDashboard = () => {
   };
 
   const menuItems = [
-    { id: 'contatos', label: 'Contatos', icon: MessageSquare },
-    { id: 'calendario', label: 'Calendário', icon: Calendar },
-    { id: 'pacientes', label: 'Pacientes Agendados', icon: UserCheck },
-    { id: 'horarios', label: 'Horários', icon: Clock }
+    { id: 'aprovacoes', label: 'Pending Approvals', icon: CheckSquare },
+    { id: 'contatos', label: 'Contacts', icon: MessageSquare },
+    { id: 'emergencias', label: 'Emergencies', icon: AlertCircle },
+    { id: 'calendario', label: 'Calendar', icon: Calendar },
+    { id: 'pacientes', label: 'Scheduled Patients', icon: UserCheck },
+    { id: 'horarios', label: 'Schedule', icon: Clock }
   ];
 
   const handleProfileUpdate = async () => {
@@ -222,13 +309,13 @@ const ClinicDashboard = () => {
       await updateUserProfile(profileData);
       setIsProfileDialogOpen(false);
       toast({
-        title: "Perfil atualizado",
-        description: "As informações da clínica foram atualizadas com sucesso.",
+        title: "Profile updated",
+        description: "Clinic information has been updated successfully.",
       });
     } catch (error) {
       toast({
-        title: "Erro",
-        description: "Erro ao atualizar o perfil. Tente novamente.",
+        title: "Error",
+        description: "Error updating profile. Please try again.",
         variant: "destructive",
       });
     }
@@ -246,14 +333,14 @@ const ClinicDashboard = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent">
-                  VetFind
+                  Paw Connect
                 </h1>
-                <p className="text-sm text-gray-600">Dashboard da Clínica</p>
+                <p className="text-sm text-gray-600">Clinic Dashboard</p>
               </div>
             </div>
             
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Olá, {user?.name}</span>
+              <span className="text-sm text-gray-600">Hello, {user?.name}</span>
               <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="ghost" size="sm">
@@ -262,15 +349,15 @@ const ClinicDashboard = () => {
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Editar Perfil da Clínica</DialogTitle>
+                    <DialogTitle>Edit Clinic Profile</DialogTitle>
                     <DialogDescription>
-                      Atualize as informações da sua clínica
+                      Update your clinic information
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="clinicName">Nome da Clínica</Label>
+                        <Label htmlFor="clinicName">Clinic Name</Label>
                         <Input
                           id="clinicName"
                           value={profileData.clinicName}
@@ -278,7 +365,7 @@ const ClinicDashboard = () => {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="phone">Telefone</Label>
+                        <Label htmlFor="phone">Phone</Label>
                         <Input
                           id="phone"
                           value={profileData.phone}
@@ -287,7 +374,7 @@ const ClinicDashboard = () => {
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="address">Endereço</Label>
+                      <Label htmlFor="address">Address</Label>
                       <Input
                         id="address"
                         value={profileData.address}
@@ -295,7 +382,7 @@ const ClinicDashboard = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="description">Descrição</Label>
+                      <Label htmlFor="description">Description</Label>
                       <Textarea
                         id="description"
                         value={profileData.description}
@@ -308,10 +395,10 @@ const ClinicDashboard = () => {
                         checked={profileData.is24Hours}
                         onCheckedChange={(checked) => setProfileData({...profileData, is24Hours: !!checked})}
                       />
-                      <Label htmlFor="is24Hours">Atendimento 24 horas</Label>
+                      <Label htmlFor="is24Hours">24-hour service</Label>
                     </div>
                     <div>
-                      <Label>Especialidades</Label>
+                      <Label>Specialties</Label>
                       <div className="grid grid-cols-2 gap-2 mt-2">
                         {specialties.map((specialty) => (
                           <div key={specialty} className="flex items-center space-x-2">
@@ -338,7 +425,7 @@ const ClinicDashboard = () => {
                       </div>
                     </div>
                     <Button onClick={handleProfileUpdate} className="w-full">
-                      Salvar Alterações
+                      Save Changes
                     </Button>
                   </div>
                 </DialogContent>
@@ -376,23 +463,46 @@ const ClinicDashboard = () => {
         </div>
 
         {/* Content based on selected section */}
+        {currentSection === 'aprovacoes' && (
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <CheckSquare className="w-5 h-5 text-purple-600" />
+                  <span>Agendamentos Pendentes</span>
+                </CardTitle>
+                <CardDescription>
+                  {pendingAppointments.length} agendamento(s) aguardando aprovação
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AppointmentApproval
+                  appointments={pendingAppointments}
+                  onApprove={handleApproveAppointment}
+                  onReject={handleRejectAppointment}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {currentSection === 'contatos' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-16rem)]">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Lista de Clientes */}
             <div className="lg:col-span-1">
-              <Card className="h-full">
+              <Card className="h-[calc(100vh-12rem)]">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Users className="w-5 h-5 text-purple-600" />
-                    <span>Clientes</span>
+                    <span>Clients</span>
                   </CardTitle>
                   <CardDescription>
-                    Clientes que entraram em contato
+                    Clients who contacted us
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="space-y-0 max-h-[calc(100vh-16rem)] overflow-y-auto">
-                    {mockClients.map((client) => (
+                  <div className="space-y-0 max-h-[calc(100vh-20rem)] overflow-y-auto">
+                    {mockClients.filter(c => !c.isEmergency).map((client) => (
                       <div
                         key={client.id}
                         className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition-colors ${
@@ -422,13 +532,13 @@ const ClinicDashboard = () => {
 
             {/* Detalhes do Cliente */}
             <div className="lg:col-span-2">
-              <Card className="h-full">
+              <Card className="h-[calc(100vh-12rem)]">
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="flex items-center space-x-2">
                         <MessageSquare className="w-5 h-5 text-purple-600" />
-                        <span>Conversa com {selectedClient.name}</span>
+                        <span>Conversation with {selectedClient.name}</span>
                       </CardTitle>
                       <CardDescription>
                         Pet: {selectedClient.pet} • Último contato: {selectedClient.lastContact}
@@ -442,64 +552,61 @@ const ClinicDashboard = () => {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="flex flex-col h-[calc(100vh-20rem)]">
+                <CardContent className="flex flex-col h-[calc(100%-2rem)]">
                   {/* Informações do Cliente */}
-                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                    <h4 className="font-medium text-gray-900 mb-2">Informações do Cliente</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="bg-gray-50 rounded-lg p-2 mb-2">
+                    <h4 className="font-medium text-gray-900 mb-1 text-sm">Client Information</h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
-                        <span className="text-gray-600">Nome:</span>
-                        <span className="ml-2 font-medium">{selectedClient.name}</span>
+                        <span className="text-gray-600">Name:</span>
+                        <span className="ml-1 font-medium">{selectedClient.name}</span>
                       </div>
                       <div>
                         <span className="text-gray-600">Pet:</span>
-                        <span className="ml-2 font-medium">{selectedClient.pet}</span>
+                        <span className="ml-1 font-medium">{selectedClient.pet}</span>
                       </div>
                       <div>
-                        <span className="text-gray-600">Telefone:</span>
-                        <span className="ml-2 font-medium">(11) 99999-9999</span>
+                        <span className="text-gray-600">Phone:</span>
+                        <span className="ml-1 font-medium">(11) 99999-9999</span>
                       </div>
                       <div>
                         <span className="text-gray-600">E-mail:</span>
-                        <span className="ml-2 font-medium">cliente@email.com</span>
+                        <span className="ml-1 font-medium">cliente@email.com</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Mensagens */}
-                  <div className="flex-1 space-y-4 overflow-y-auto mb-4">
-                    <div className="flex">
-                      <div className="bg-gray-100 rounded-lg p-3 max-w-xs">
-                        <p className="text-sm">{selectedClient.message}</p>
-                        <p className="text-xs text-gray-500 mt-1">{selectedClient.lastContact} 14:30</p>
-                      </div>
-                    </div>
-                    
-                    {selectedClient.status === 'Respondido' && (
-                      <div className="flex justify-end">
-                        <div className="bg-purple-500 text-white rounded-lg p-3 max-w-xs">
-                          <p className="text-sm">Olá! Podemos agendar para amanhã às 15h. Traga a carteirinha de vacinação.</p>
-                          <p className="text-xs text-purple-200 mt-1">{selectedClient.lastContact} 15:45</p>
+                  {/* Messages */}
+                  <div className="flex-1 space-y-3 overflow-y-auto mb-3 p-3 bg-white rounded-lg border border-gray-200">
+                    {messages[selectedClient.id]?.map((msg) => (
+                      <div key={msg.id} className={`flex ${msg.sender === 'clinic' ? 'justify-end' : 'justify-start'}`}>
+                        <div 
+                          className="rounded-lg p-3 max-w-xs"
+                          style={{
+                            backgroundColor: msg.sender === 'clinic' ? '#9333ea' : '#f3f4f6',
+                            color: msg.sender === 'clinic' ? '#ffffff' : '#111827'
+                          }}
+                        >
+                          <p className="text-sm">{msg.text}</p>
+                          <p className={`text-xs mt-1 ${
+                            msg.sender === 'clinic' ? 'text-purple-200' : 'text-gray-500'
+                          }`}>
+                            {msg.timestamp}
+                          </p>
                         </div>
+                      </div>
+                    )) || (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>No messages yet</p>
                       </div>
                     )}
-                    
-                    {/* Mensagens adicionais */}
-                    {messages[selectedClient.id]?.map((msg) => (
-                      <div key={msg.id} className="flex justify-end">
-                        <div className="bg-purple-500 text-white rounded-lg p-3 max-w-xs">
-                          <p className="text-sm">{msg.text}</p>
-                          <p className="text-xs text-purple-200 mt-1">{msg.timestamp}</p>
-                        </div>
-                      </div>
-                    ))}
                   </div>
 
                   {/* Reply Input */}
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex space-x-2">
                       <Input
-                        placeholder="Digite sua resposta..."
+                        placeholder="Type your response..."
                         value={replyMessage}
                         onChange={(e) => setReplyMessage(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSendReply()}
@@ -511,14 +618,153 @@ const ClinicDashboard = () => {
                     </div>
                     <Button variant="outline" className="w-full border-purple-200 text-purple-600 hover:bg-purple-50">
                       <Phone className="w-4 h-4 mr-2" />
-                      Ligar para {selectedClient.name}
+                      Call {selectedClient.name}
                     </Button>
                     <Button 
                       onClick={() => setIsScheduleDialogOpen(true)}
                       className="w-full bg-purple-600 hover:bg-purple-700"
                     >
                       <Calendar className="w-4 h-4 mr-2" />
-                      Agendar Consulta
+                      Schedule Appointment
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {currentSection === 'emergencias' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <Card className="h-[calc(100vh-12rem)] border-red-200">
+                <CardHeader className="bg-red-50">
+                  <CardTitle className="flex items-center space-x-2 text-red-700">
+                    <AlertCircle className="w-5 h-5" />
+                    <span>Emergency Contacts</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Urgent contacts requiring immediate attention
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="space-y-0 max-h-[calc(100vh-20rem)] overflow-y-auto">
+                    {mockClients.filter(c => c.isEmergency).map((client) => (
+                      <div
+                        key={client.id}
+                        className={`p-4 border-b cursor-pointer hover:bg-red-50 transition-colors border-l-4 border-l-red-500 ${
+                          selectedClient.id === client.id ? 'bg-red-50' : ''
+                        }`}
+                        onClick={() => setSelectedClient(client)}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-medium text-gray-900 flex items-center gap-2">
+                            {client.name}
+                            <AlertCircle className="w-4 h-4 text-red-500" />
+                          </h3>
+                          <Badge variant="destructive" className="text-xs">
+                            EMERGENCY
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">{client.pet}</p>
+                        <p className="text-xs text-gray-500">{client.lastContact}</p>
+                        <p className="text-sm text-gray-700 mt-2 line-clamp-2">{client.message}</p>
+                      </div>
+                    ))}
+                    {mockClients.filter(c => c.isEmergency).length === 0 && (
+                      <div className="p-8 text-center text-gray-500">
+                        <AlertCircle className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                        <p>No emergency contacts</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="lg:col-span-2">
+              <Card className="h-[calc(100vh-12rem)] border-red-200">
+                <CardHeader className="bg-red-50">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="flex items-center space-x-2 text-red-700">
+                        <AlertCircle className="w-5 h-5" />
+                        <span>Emergency Chat - {selectedClient.name}</span>
+                      </CardTitle>
+                      <CardDescription>
+                        Pet: {selectedClient.pet} • Last contact: {selectedClient.lastContact}
+                      </CardDescription>
+                    </div>
+                    <Badge variant="destructive">EMERGENCY</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex flex-col h-[calc(100%-2rem)]">
+                  <div className="bg-red-50 rounded-lg p-2 mb-2 border border-red-200">
+                    <h4 className="font-medium text-red-900 mb-1 text-sm flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      Emergency Contact Information
+                    </h4>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-gray-600">Name:</span>
+                        <span className="ml-1 font-medium">{selectedClient.name}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Pet:</span>
+                        <span className="ml-1 font-medium">{selectedClient.pet}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Phone:</span>
+                        <span className="ml-1 font-medium">(11) 99999-9999</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">E-mail:</span>
+                        <span className="ml-1 font-medium">cliente@email.com</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 space-y-3 overflow-y-auto mb-3 p-3 bg-white rounded-lg border border-red-200">
+                    {messages[selectedClient.id]?.map((msg) => (
+                      <div key={msg.id} className={`flex ${msg.sender === 'clinic' ? 'justify-end' : 'justify-start'}`}>
+                        <div 
+                          className="rounded-lg p-3 max-w-xs"
+                          style={{
+                            backgroundColor: msg.sender === 'clinic' ? '#dc2626' : '#fee2e2',
+                            color: msg.sender === 'clinic' ? '#ffffff' : '#991b1b'
+                          }}
+                        >
+                          <p className="text-sm">{msg.text}</p>
+                          <p className={`text-xs mt-1 ${
+                            msg.sender === 'clinic' ? 'text-red-200' : 'text-red-700'
+                          }`}>
+                            {msg.timestamp}
+                          </p>
+                        </div>
+                      </div>
+                    )) || (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>No messages yet</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex space-x-2">
+                      <Input
+                        placeholder="Type urgent response..."
+                        value={replyMessage}
+                        onChange={(e) => setReplyMessage(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSendReply()}
+                        className="flex-1 border-red-300 focus:border-red-500"
+                      />
+                      <Button onClick={handleSendReply} disabled={!replyMessage.trim()} className="bg-red-600 hover:bg-red-700">
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <Button variant="outline" className="w-full border-red-300 text-red-600 hover:bg-red-50">
+                      <Phone className="w-4 h-4 mr-2" />
+                      Call {selectedClient.name} NOW
                     </Button>
                   </div>
                 </CardContent>
@@ -534,9 +780,9 @@ const ClinicDashboard = () => {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Calendar className="w-5 h-5 text-purple-600" />
-                  <span>Calendário</span>
+                  <span>Calendar</span>
                 </CardTitle>
-                <CardDescription>Selecione uma data para ver os agendamentos</CardDescription>
+                <CardDescription>Select a date to view appointments</CardDescription>
               </CardHeader>
               <CardContent className="flex justify-center">
                 <CalendarComponent
@@ -566,13 +812,13 @@ const ClinicDashboard = () => {
                 <CardTitle className="flex items-center space-x-2">
                   <Clock className="w-5 h-5 text-purple-600" />
                   <span>
-                    Agenda - {selectedDate ? format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : 'Selecione uma data'}
+                    Schedule - {selectedDate ? format(selectedDate, "MMMM dd, yyyy") : 'Select a date'}
                   </span>
                 </CardTitle>
                 <CardDescription>
                   {selectedDate && appointments.filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd')).length > 0
-                    ? `${appointments.filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd')).length} agendamento(s) para este dia`
-                    : 'Nenhum agendamento para este dia'
+                    ? `${appointments.filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd')).length} appointment(s) for this day`
+                    : 'No appointments for this day'
                   }
                 </CardDescription>
               </CardHeader>
@@ -622,13 +868,13 @@ const ClinicDashboard = () => {
                           
                           <div className="flex space-x-2 mt-3">
                             <Button size="sm" variant="outline" className="text-xs">
-                              Editar
+                              Edit
                             </Button>
                             <Button size="sm" variant="outline" className="text-xs">
-                              Cancelar
+                              Cancel
                             </Button>
                             <Button size="sm" className="text-xs">
-                              Confirmar
+                              Confirm
                             </Button>
                           </div>
                         </div>
@@ -638,14 +884,14 @@ const ClinicDashboard = () => {
                     {appointments.filter(apt => apt.date === format(selectedDate, 'yyyy-MM-dd')).length === 0 && (
                       <div className="text-center py-8 text-gray-500">
                         <Calendar className="w-12 h-12 mx-auto mb-2 text-purple-300" />
-                        <p>Nenhum agendamento para este dia</p>
+                        <p>No appointments for this day</p>
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
                     <Calendar className="w-12 h-12 mx-auto mb-2 text-purple-300" />
-                    <p>Selecione uma data no calendário para ver os agendamentos</p>
+                    <p>Select a date on the calendar to view appointments</p>
                   </div>
                 )}
               </CardContent>
@@ -658,10 +904,10 @@ const ClinicDashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <UserCheck className="w-5 h-5 text-purple-600" />
-                <span>Pacientes Agendados Hoje</span>
+                <span>Today's Scheduled Patients</span>
               </CardTitle>
               <CardDescription>
-                {format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })} - {getTodayAppointments().length} paciente(s)
+                {format(new Date(), "MMMM dd, yyyy")} - {getTodayAppointments().length} patient(s)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -696,9 +942,9 @@ const ClinicDashboard = () => {
                         </div>
                         
                         <div className="flex space-x-2 mt-3">
-                          <Button size="sm" variant="outline">Editar</Button>
-                          <Button size="sm" variant="outline">Cancelar</Button>
-                          <Button size="sm">Atender</Button>
+                          <Button size="sm" variant="outline">Edit</Button>
+                          <Button size="sm" variant="outline">Cancel</Button>
+                          <Button size="sm">Attend</Button>
                         </div>
                       </div>
                     ))
@@ -707,7 +953,7 @@ const ClinicDashboard = () => {
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <UserCheck className="w-12 h-12 mx-auto mb-2 text-purple-300" />
-                  <p>Nenhum paciente agendado para hoje</p>
+                  <p>No patients scheduled for today</p>
                 </div>
               )}
             </CardContent>
@@ -719,9 +965,9 @@ const ClinicDashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Clock className="w-5 h-5 text-purple-600" />
-                <span>Horários Disponíveis</span>
+                <span>Available Times</span>
               </CardTitle>
-              <CardDescription>Horários disponíveis para agendamento hoje</CardDescription>
+              <CardDescription>Available times for scheduling today</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
@@ -731,7 +977,7 @@ const ClinicDashboard = () => {
                     className="p-3 text-center border rounded-lg bg-green-50 border-green-200 text-green-700"
                   >
                     <div className="font-medium">{time}</div>
-                    <div className="text-xs mt-1">Disponível</div>
+                    <div className="text-xs mt-1">Available</div>
                   </div>
                 ))}
                 
@@ -743,7 +989,7 @@ const ClinicDashboard = () => {
                       className="p-3 text-center border rounded-lg bg-red-50 border-red-200 text-red-700"
                     >
                       <div className="font-medium">{time}</div>
-                      <div className="text-xs mt-1">Ocupado</div>
+                      <div className="text-xs mt-1">Busy</div>
                     </div>
                   ))
                 }
@@ -752,7 +998,7 @@ const ClinicDashboard = () => {
               {getAvailableTimesForDate(format(new Date(), 'yyyy-MM-dd')).length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <Clock className="w-12 h-12 mx-auto mb-2 text-purple-300" />
-                  <p>Todos os horários estão ocupados hoje</p>
+                  <p>All times are busy today</p>
                 </div>
               )}
             </CardContent>
@@ -763,14 +1009,14 @@ const ClinicDashboard = () => {
         <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Agendar Consulta</DialogTitle>
+              <DialogTitle>Schedule Appointment</DialogTitle>
               <DialogDescription>
-                Agendar consulta para {selectedClient.name} - {selectedClient.pet}
+                Schedule appointment for {selectedClient.name} - {selectedClient.pet}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="date">Data</Label>
+                <Label htmlFor="date">Date</Label>
                 <Input
                   id="date"
                   type="date"
@@ -781,10 +1027,10 @@ const ClinicDashboard = () => {
               </div>
               
               <div>
-                <Label htmlFor="time">Horário</Label>
+                <Label htmlFor="time">Time</Label>
                 <Select value={scheduleData.time} onValueChange={(value) => setScheduleData({...scheduleData, time: value})}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione um horário" />
+                    <SelectValue placeholder="Select a time" />
                   </SelectTrigger>
                   <SelectContent>
                     {scheduleData.date && getAvailableTimesForDate(scheduleData.date).map((time) => (
@@ -795,10 +1041,10 @@ const ClinicDashboard = () => {
               </div>
               
               <div>
-                <Label htmlFor="specialty">Especialidade</Label>
+                <Label htmlFor="specialty">Specialty</Label>
                 <Select value={scheduleData.specialty} onValueChange={(value) => setScheduleData({...scheduleData, specialty: value})}>
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione uma especialidade" />
+                    <SelectValue placeholder="Select a specialty" />
                   </SelectTrigger>
                   <SelectContent>
                     {specialties.map((specialty) => (
@@ -814,13 +1060,13 @@ const ClinicDashboard = () => {
                   onClick={() => setIsScheduleDialogOpen(false)}
                   className="flex-1"
                 >
-                  Cancelar
+                  Cancel
                 </Button>
                 <Button 
                   onClick={handleScheduleAppointment}
                   className="flex-1"
                 >
-                  Agendar
+                  Schedule
                 </Button>
               </div>
             </div>

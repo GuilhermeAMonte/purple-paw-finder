@@ -42,10 +42,12 @@ const Profile = () => {
     name: user?.name || '',
     email: user?.email || '',
     phone: localStorage.getItem(`phone_${user?.id}`) || '',
-    address: localStorage.getItem(`address_${user?.id}`) || '',
-    city: localStorage.getItem(`city_${user?.id}`) || '',
-    state: localStorage.getItem(`state_${user?.id}`) || '',
-    zipCode: localStorage.getItem(`zipCode_${user?.id}`) || '',
+    address: localStorage.getItem(`rua_${user?.id}`) ? 
+      `${localStorage.getItem(`rua_${user?.id}`)}, ${localStorage.getItem(`numero_${user?.id}`)}` : 
+      localStorage.getItem(`address_${user?.id}`) || '',
+    city: localStorage.getItem(`cidade_${user?.id}`) || localStorage.getItem(`city_${user?.id}`) || '',
+    state: localStorage.getItem(`estado_${user?.id}`) || localStorage.getItem(`state_${user?.id}`) || '',
+    zipCode: localStorage.getItem(`cep_${user?.id}`) || localStorage.getItem(`zipCode_${user?.id}`) || '',
   });
   
   const [pets, setPets] = useState<Pet[]>(
@@ -62,6 +64,8 @@ const Profile = () => {
     color: '',
     notes: ''
   });
+  
+  const [newPetPhoto, setNewPetPhoto] = useState<string | null>(null);
   
   const [avatar, setAvatar] = useState<string | null>(
     localStorage.getItem(`avatar_${user?.id}`) || null
@@ -100,13 +104,34 @@ const Profile = () => {
     }));
   };
 
+  const handlePetPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: "Image must be at most 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        setNewPetPhoto(result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
         toast({
-          title: "Erro",
-          description: "A imagem deve ter no máximo 5MB",
+          title: "Error",
+          description: "Image must be at most 5MB",
           variant: "destructive",
         });
         return;
@@ -122,10 +147,10 @@ const Profile = () => {
   };
 
   const addPet = () => {
-    if (!newPet.name || !newPet.species) {
+    if (!newPet.name || !newPet.species || !newPet.breed) {
       toast({
-        title: "Erro",
-        description: "Nome e espécie são obrigatórios",
+        title: "Error",
+        description: "Name, species and breed are required",
         variant: "destructive",
       });
       return;
@@ -139,6 +164,11 @@ const Profile = () => {
     const updatedPets = [...pets, petWithId];
     setPets(updatedPets);
     localStorage.setItem(`pets_${user?.id}`, JSON.stringify(updatedPets));
+    
+    // Save pet photo if exists
+    if (newPetPhoto) {
+      localStorage.setItem(`pet_photo_${petWithId.id}`, newPetPhoto);
+    }
 
     setNewPet({
       id: '',
@@ -150,11 +180,12 @@ const Profile = () => {
       color: '',
       notes: ''
     });
+    setNewPetPhoto(null);
     setShowAddPet(false);
 
     toast({
-      title: "Sucesso",
-      description: "Pet adicionado com sucesso!",
+      title: "Success",
+      description: "Pet added successfully!",
     });
 
     // Se veio do fluxo de create-ticket, redireciona de volta com o pet selecionado
@@ -169,8 +200,8 @@ const Profile = () => {
     localStorage.setItem(`pets_${user?.id}`, JSON.stringify(updatedPets));
     
     toast({
-      title: "Sucesso",
-      description: "Pet removido com sucesso!",
+      title: "Success",
+      description: "Pet removed successfully!",
     });
   };
 
@@ -212,16 +243,16 @@ const Profile = () => {
       }
 
       toast({
-        title: "Sucesso",
-        description: "Perfil atualizado com sucesso!",
+        title: "Success",
+        description: "Profile updated successfully!",
       });
 
       // Recarregar a página para atualizar o contexto
       window.location.reload();
     } catch (error) {
       toast({
-        title: "Erro",
-        description: "Erro ao atualizar perfil. Tente novamente.",
+        title: "Error",
+        description: "Error updating profile. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -248,21 +279,21 @@ const Profile = () => {
             className="mb-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
+            Back
           </Button>
-          <h1 className="text-3xl font-bold text-foreground">Meu Perfil</h1>
-          <p className="text-muted-foreground">Gerencie suas informações pessoais</p>
+          <h1 className="text-3xl font-bold text-foreground">My Profile</h1>
+          <p className="text-muted-foreground">Manage your personal information</p>
         </div>
 
         <Card className="glass-effect border-border/40">
           <CardHeader>
-            <CardTitle className="text-xl">Configurações da Conta</CardTitle>
+            <CardTitle className="text-xl">Account Settings</CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="personal">Dados Pessoais</TabsTrigger>
-                <TabsTrigger value="pets">Meus Pets</TabsTrigger>
+                <TabsTrigger value="personal">Personal Data</TabsTrigger>
+                <TabsTrigger value="pets">My Pets</TabsTrigger>
               </TabsList>
               
               <TabsContent value="personal" className="space-y-6">
@@ -291,7 +322,7 @@ const Profile = () => {
                       />
                     </div>
                     <p className="text-sm text-muted-foreground text-center">
-                      Clique no ícone da câmera para alterar sua foto
+                      Click the camera icon to change your photo
                     </p>
                   </div>
 
@@ -299,7 +330,7 @@ const Profile = () => {
                   <div className="grid gap-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="name">Nome completo</Label>
+                        <Label htmlFor="name">Full name</Label>
                         <Input
                           id="name"
                           name="name"
@@ -323,7 +354,7 @@ const Profile = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Telefone</Label>
+                      <Label htmlFor="phone">Phone</Label>
                       <Input
                         id="phone"
                         name="phone"
@@ -335,20 +366,20 @@ const Profile = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="address">Endereço</Label>
+                      <Label htmlFor="address">Address</Label>
                       <Input
                         id="address"
                         name="address"
                         type="text"
                         value={formData.address}
                         onChange={handleInputChange}
-                        placeholder="Rua, número, complemento"
+                        placeholder="Street, number, complement"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="city">Cidade</Label>
+                        <Label htmlFor="city">City</Label>
                         <Input
                           id="city"
                           name="city"
@@ -359,7 +390,7 @@ const Profile = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="state">Estado</Label>
+                        <Label htmlFor="state">State</Label>
                         <Input
                           id="state"
                           name="state"
@@ -390,11 +421,11 @@ const Profile = () => {
                     className="w-full"
                   >
                     {isLoading ? (
-                      "Salvando..."
+                      "Saving..."
                     ) : (
                       <>
                         <Save className="w-4 h-4 mr-2" />
-                        Salvar Alterações
+                        Save Changes
                       </>
                     )}
                   </Button>
@@ -403,13 +434,13 @@ const Profile = () => {
 
               <TabsContent value="pets" className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">Meus Pets</h3>
+                  <h3 className="text-lg font-semibold">My Pets</h3>
                   <Button 
                     onClick={() => setShowAddPet(true)}
                     className="flex items-center space-x-2"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Adicionar Pet</span>
+                    <span>Add Pet</span>
                   </Button>
                 </div>
 
@@ -418,88 +449,119 @@ const Profile = () => {
                   <Card className="border-dashed border-2">
                     <CardContent className="p-4">
                       <div className="grid gap-4">
+                        {/* Pet Photo Section */}
+                        <div className="flex flex-col items-center space-y-4">
+                          <div className="relative">
+                            <Avatar className="w-20 h-20">
+                              <AvatarImage src={newPetPhoto || undefined} />
+                              <AvatarFallback className="text-lg font-semibold">
+                                🐾
+                              </AvatarFallback>
+                            </Avatar>
+                            <label
+                              htmlFor="pet-photo-upload"
+                              className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-1.5 cursor-pointer hover:bg-primary/90 transition-colors"
+                            >
+                              <Camera className="w-3 h-3" />
+                            </label>
+                            <input
+                              id="pet-photo-upload"
+                              type="file"
+                              accept="image/*"
+                              onChange={handlePetPhotoChange}
+                              className="hidden"
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground text-center">
+                            Click to add pet photo
+                          </p>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="petName">Nome do Pet</Label>
+                            <Label htmlFor="petName">Pet Name *</Label>
                             <Input
                               id="petName"
                               name="name"
                               value={newPet.name}
                               onChange={handlePetInputChange}
-                              placeholder="Nome do seu pet"
+                              placeholder="Your pet's name"
                               required
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="petSpecies">Espécie</Label>
+                            <Label htmlFor="petSpecies">Species *</Label>
                             <Select onValueChange={handlePetSpeciesChange} value={newPet.species}>
                               <SelectTrigger>
-                                <SelectValue placeholder="Selecione a espécie" />
+                                <SelectValue placeholder="Select species" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="dog">Cachorro</SelectItem>
-                                <SelectItem value="cat">Gato</SelectItem>
-                                <SelectItem value="bird">Pássaro</SelectItem>
-                                <SelectItem value="rabbit">Coelho</SelectItem>
+                                <SelectItem value="dog">Dog</SelectItem>
+                                <SelectItem value="cat">Cat</SelectItem>
+                                <SelectItem value="bird">Bird</SelectItem>
+                                <SelectItem value="rabbit">Rabbit</SelectItem>
                                 <SelectItem value="hamster">Hamster</SelectItem>
-                                <SelectItem value="fish">Peixe</SelectItem>
-                                <SelectItem value="reptile">Réptil</SelectItem>
-                                <SelectItem value="other">Outro</SelectItem>
+                                <SelectItem value="fish">Fish</SelectItem>
+                                <SelectItem value="reptile">Reptile</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="petBreed">Breed *</Label>
+                          <BreedSelector
+                            species={newPet.species}
+                            value={newPet.breed}
+                            onChange={handlePetBreedChange}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="petBreed">Raça</Label>
-                            <BreedSelector
-                              species={newPet.species}
-                              value={newPet.breed}
-                              onChange={handlePetBreedChange}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="petAge">Idade</Label>
+                            <Label htmlFor="petAge">Age</Label>
                             <Input
                               id="petAge"
                               name="age"
                               value={newPet.age}
                               onChange={handlePetInputChange}
-                              placeholder="Ex: 2 anos"
+                              placeholder="Ex: 2 years"
                             />
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="petWeight">Peso</Label>
-                            <Input
-                              id="petWeight"
-                              name="weight"
-                              value={newPet.weight}
-                              onChange={handlePetInputChange}
-                              placeholder="Ex: 15kg"
-                            />
-                          </div>
+                          {(newPet.species === 'dog' || newPet.species === 'cat') && (
+                            <div className="space-y-2">
+                              <Label htmlFor="petWeight">Weight</Label>
+                              <Input
+                                id="petWeight"
+                                name="weight"
+                                value={newPet.weight}
+                                onChange={handlePetInputChange}
+                                placeholder="Ex: 15kg"
+                              />
+                            </div>
+                          )}
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="petColor">Cor</Label>
+                          <Label htmlFor="petColor">Color</Label>
                           <Input
                             id="petColor"
                             name="color"
                             value={newPet.color}
                             onChange={handlePetInputChange}
-                            placeholder="Ex: Marrom e branco"
+                            placeholder="Ex: Brown and white"
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="petNotes">Observações</Label>
+                          <Label htmlFor="petNotes">Notes</Label>
                           <Textarea
                             id="petNotes"
                             name="notes"
                             value={newPet.notes}
                             onChange={handlePetInputChange}
-                            placeholder="Informações adicionais sobre seu pet (comportamento, alergias, etc.)"
+                            placeholder="Additional information about your pet (behavior, allergies, etc.)"
                             rows={3}
                           />
                         </div>
@@ -507,14 +569,14 @@ const Profile = () => {
                         <div className="flex space-x-2">
                           <Button onClick={addPet} className="flex-1">
                             <Save className="w-4 h-4 mr-2" />
-                            Salvar Pet
+                            Save Pet
                           </Button>
                           <Button 
                             variant="outline" 
                             onClick={() => setShowAddPet(false)}
                             className="flex-1"
                           >
-                            Cancelar
+                            Cancel
                           </Button>
                         </div>
                       </div>
@@ -529,7 +591,7 @@ const Profile = () => {
                       <CardContent className="p-8 text-center">
                         <Heart className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                         <p className="text-muted-foreground">
-                          Você ainda não adicionou nenhum pet. Clique em "Adicionar Pet" para começar.
+                          You haven't added any pets yet. Click "Add Pet" to get started.
                         </p>
                       </CardContent>
                     </Card>
@@ -538,20 +600,28 @@ const Profile = () => {
                       <Card key={pet.id} className="border">
                         <CardContent className="p-4">
                           <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-lg">{pet.name}</h4>
+                            <div className="flex items-start space-x-3 flex-1">
+                              <Avatar className="w-12 h-12 flex-shrink-0">
+                                <AvatarImage src={localStorage.getItem(`pet_photo_${pet.id}`) || undefined} />
+                                <AvatarFallback className="text-sm">
+                                  🐾
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-lg">{pet.name}</h4>
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 text-sm text-muted-foreground">
-                                <span><strong>Espécie:</strong> {pet.species === 'dog' ? 'Cachorro' : pet.species === 'cat' ? 'Gato' : pet.species}</span>
-                                {pet.breed && <span><strong>Raça:</strong> {pet.breed}</span>}
-                                {pet.age && <span><strong>Idade:</strong> {pet.age}</span>}
-                                {pet.weight && <span><strong>Peso:</strong> {pet.weight}</span>}
-                                {pet.color && <span><strong>Cor:</strong> {pet.color}</span>}
+                                <span><strong>Species:</strong> {pet.species === 'dog' ? 'Dog' : pet.species === 'cat' ? 'Cat' : pet.species}</span>
+                                {pet.breed && <span><strong>Breed:</strong> {pet.breed}</span>}
+                                {pet.age && <span><strong>Age:</strong> {pet.age}</span>}
+                                {pet.weight && <span><strong>Weight:</strong> {pet.weight}</span>}
+                                {pet.color && <span><strong>Color:</strong> {pet.color}</span>}
                               </div>
-                              {pet.notes && (
-                                <p className="mt-2 text-sm text-muted-foreground">
-                                  <strong>Observações:</strong> {pet.notes}
-                                </p>
-                              )}
+                                {pet.notes && (
+                                  <p className="mt-2 text-sm text-muted-foreground">
+                                    <strong>Notes:</strong> {pet.notes}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                             <Button
                               variant="ghost"

@@ -88,7 +88,7 @@ const Login = () => {
               <Heart className="w-7 h-7 text-white" />
             </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent">
-              VetFind
+              Paw Connect
             </h1>
           </div>
           <p className="text-gray-600">Sign in to your account</p>
