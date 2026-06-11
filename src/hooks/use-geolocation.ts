@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-interface Coordinates {
+export interface Coordinates {
   latitude: number;
   longitude: number;
 }

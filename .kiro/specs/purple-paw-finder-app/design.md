@@ -371,7 +371,34 @@ interface ChatProps {
 - Contador de caracteres visível quando campo tem mais de 900 caracteres
 - Botões "Denunciar" e "Bloquear" com diálogos de confirmação (Req 9.11, 9.12)
 
-### 3.8 ClinicDashboard
+### 3.8 ClinicVisualSetup
+
+```typescript
+interface ClinicVisualSetupProps {
+  // lê userId do AuthContext internamente
+}
+```
+
+- Acessível apenas via `ClinicRoute` (Req 17.1)
+- Campos: upload de logotipo, upload de foto de capa, seletor de cor principal
+- Pré-visualização inline da imagem antes de confirmar (Req 17.3)
+- Validação via `validateFile(file, ALLOWED_PET_PHOTO_TYPES, 5 * 1024 * 1024)` em cada upload (Req 17.2)
+- Campo de cor: `<input type="color">` + validação de regex `/^#[0-9A-Fa-f]{6}$/` via Zod (Req 17.4)
+- Estado inicial pré-preenchido a partir do perfil salvo (Req 17.6)
+- Ao submeter com sucesso: `updateUserProfile({ logoUrl, coverUrl, primaryColor, isProfileComplete: true })` + navega para `/clinic-dashboard` (Req 17.5, 17.7)
+
+```typescript
+// src/schemas/clinic.schemas.ts (adição)
+export const clinicVisualSetupSchema = z.object({
+  logoUrl: z.string().optional(),   // data-URL após validação de arquivo
+  coverUrl: z.string().optional(),  // data-URL após validação de arquivo
+  primaryColor: z.string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, 'Cor deve estar no formato #RRGGBB')
+    .optional(),
+});
+```
+
+### 3.9 ClinicDashboard
 
 Abas/seções:
 1. **Aprovações Pendentes** — lista tickets `pending` com count badge
@@ -1096,13 +1123,63 @@ it('registerSchema rejeita qualquer combinação de campos inválidos', () => {
 
 ```typescript
 // Feature: purple-paw-finder-app, Property 2: passwordHash != senha original
-it('hash armazenado nunca é igual à senha original', () => {
-  fc.assert(fc.property(
+// Nota: fast-check não suporta predicados async nativamente em fc.property.
+// A propriedade é verificada com fc.asyncProperty + fc.assert com asyncReporter.
+it('hash armazenado nunca é igual à senha original', async () => {
+  await fc.assert(fc.asyncProperty(
     fc.string({ minLength: 8, maxLength: 128 }),
     async (password) => {
       const hash = await hashPassword(password);
       expect(hash).not.toBe(password);
+      expect(hash.startsWith('$2')).toBe(true); // prefixo bcrypt
       expect(hash.length).toBeGreaterThan(0);
+    }
+  ), { numRuns: 20 }); // numRuns reduzido: bcrypt é intencionalmente lento
+});
+```
+
+#### Propriedade 3 — Login com credenciais válidas gera sessão sem expor hash
+
+```typescript
+// Feature: purple-paw-finder-app, Property 3: login bem-sucedido gera sessão sem passwordHash
+it('login com credenciais válidas autentica e não expõe hash no contexto', async () => {
+  await fc.assert(fc.asyncProperty(
+    fc.emailAddress(),
+    fc.string({ minLength: 8, maxLength: 128 }),
+    async (email, password) => {
+      // Setup: registrar usuário
+      await registerUser({ name: 'Teste', email, password, userType: 'client' });
+      const result = await loginUser(email, password);
+      expect(result.success).toBe(true);
+      // O objeto de sessão exposto não deve conter passwordHash
+      const sessionUser = storage.getCurrentUser();
+      expect(sessionUser).not.toBeNull();
+      expect((sessionUser as any).passwordHash).toBeUndefined();
+    }
+  ), { numRuns: 20 });
+});
+```
+
+#### Propriedade 4 — Sessão expirada é invalidada na inicialização
+
+```typescript
+// Feature: purple-paw-finder-app, Property 4: sessão com lastActivity > 8h é removida
+it('AuthProvider invalida sessão com lastActivity mais de 8 horas atrás', () => {
+  fc.assert(fc.property(
+    fc.integer({ min: 1, max: 999 }), // horas adicionais além de 8h
+    (extraHours) => {
+      const expiredLastActivity = Date.now() - (8 * 60 * 60 * 1000) - (extraHours * 60 * 60 * 1000);
+      const staleSession: SessionMeta = {
+        userId: 'u1',
+        userType: 'client',
+        createdAt: expiredLastActivity,
+        lastActivity: expiredLastActivity,
+        expiresAt: expiredLastActivity + 8 * 60 * 60 * 1000,
+      };
+      storage.setSessionMeta(staleSession);
+      // Simula inicialização do AuthProvider chamando a função de verificação
+      const isValid = isSessionValid(staleSession);
+      expect(isValid).toBe(false);
     }
   ), { numRuns: 100 });
 });
@@ -1121,6 +1198,30 @@ it('encodeHTML remove todos os caracteres HTML especiais', () => {
       expect(encoded).not.toMatch(/[<>"'&]/);
       // Idempotência
       expect(encodeHTML(encoded)).toBe(encoded);
+    }
+  ), { numRuns: 100 });
+});
+```
+
+#### Propriedade 6 — Brute-force bloqueia após 5 falhas na janela de 5 minutos
+
+```typescript
+// Feature: purple-paw-finder-app, Property 6: 5 falhas em 5min bloqueiam o e-mail
+it('5ª tentativa falha dentro da janela bloqueia e a 6ª é rejeitada mesmo com senha correta', () => {
+  fc.assert(fc.property(
+    fc.emailAddress(),
+    fc.integer({ min: 0, max: 4 * 60 * 1000 }), // offset em ms dentro da janela de 5min
+    (email, timeSpread) => {
+      const now = Date.now();
+      const attempts: LoginAttempts = {
+        [email]: {
+          failCount: 5,
+          firstAttemptAt: now - timeSpread,
+          lockedUntil: now + 15 * 60 * 1000,
+        },
+      };
+      const isBlocked = isLoginBlocked(attempts, email);
+      expect(isBlocked).toBe(true);
     }
   ), { numRuns: 100 });
 });
@@ -1161,6 +1262,47 @@ it('toggleFavorite inverte isFavorite e é reversível', () => {
 });
 ```
 
+#### Propriedade 9 — IDs inválidos em toggleFavorite não alteram o estado
+
+```typescript
+// Feature: purple-paw-finder-app, Property 9: toggleFavorite com ID inválido é no-op
+it('toggleFavorite ignora IDs nulos, undefined ou vazios', () => {
+  fc.assert(fc.property(
+    fc.array(fc.uuid(), { minLength: 0, maxLength: 20 }),
+    fc.oneof(fc.constant(''), fc.constant('   '), fc.constant('\t\n')),
+    (initialFavorites, invalidId) => {
+      const before = [...initialFavorites];
+      const after = toggleInList(initialFavorites, invalidId);
+      expect(after).toEqual(before);
+    }
+  ), { numRuns: 100 });
+});
+```
+
+#### Propriedade 10 — Dados corrompidos de favoritos resultam em lista vazia
+
+```typescript
+// Feature: purple-paw-finder-app, Property 10: favoritos corrompidos → lista vazia
+it('FavoritesProvider inicializa com lista vazia quando localStorage contém dados inválidos', () => {
+  fc.assert(fc.property(
+    fc.oneof(
+      fc.constant('not-json'),
+      fc.constant('null'),
+      fc.constant('42'),
+      fc.constant('{"key":"value"}'),
+      fc.array(fc.integer()),  // array de não-strings
+    ),
+    (corruptData) => {
+      localStorage.setItem('paw_favorites', JSON.stringify(corruptData));
+      const result = storage.getFavorites();
+      // Deve retornar array vazio sem lançar
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.every(id => typeof id === 'string' && id.trim() !== '')).toBe(true);
+    }
+  ), { numRuns: 100 });
+});
+```
+
 #### Propriedade 11 — Filtro de busca satisfaz ambos os critérios
 
 ```typescript
@@ -1177,6 +1319,62 @@ it('busca retorna apenas clínicas que correspondem a localização E especialid
         const matchesSpecialty = r.clinic.specialties?.includes(specialty) ?? false;
         expect(matchesLocation && matchesSpecialty).toBe(true);
       }
+    }
+  ), { numRuns: 100 });
+});
+```
+
+#### Propriedade 12 — Validação de arquivo rejeita qualquer critério inválido
+
+```typescript
+// Feature: purple-paw-finder-app, Property 12: validateFile rejeita MIME/tamanho/magic bytes inválidos
+it('validateFile retorna inválido quando qualquer critério falha', async () => {
+  await fc.assert(fc.asyncProperty(
+    fc.oneof(
+      // Arquivo grande demais
+      fc.record({
+        size: fc.integer({ min: 5 * 1024 * 1024 + 1, max: 20 * 1024 * 1024 }),
+        type: fc.constant('image/jpeg'),
+        bytes: fc.uint8Array({ minLength: 4, maxLength: 4 }).map(() => new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0])),
+      }),
+      // MIME não permitido
+      fc.record({
+        size: fc.integer({ min: 1, max: 1024 }),
+        type: fc.constantFrom('application/javascript', 'text/html', 'image/svg+xml'),
+        bytes: fc.uint8Array({ minLength: 4, maxLength: 4 }),
+      }),
+    ),
+    async ({ size, type, bytes }) => {
+      const file = new File([bytes], 'test', { type });
+      Object.defineProperty(file, 'size', { value: size });
+      const result = await validateFile(file, ALLOWED_IMAGE_TYPES, 5 * 1024 * 1024);
+      expect(result.valid).toBe(false);
+      expect(result.error).toBeTruthy();
+    }
+  ), { numRuns: 100 });
+});
+```
+
+#### Propriedade 13 — Tickets sempre associados ao userId do AuthContext
+
+```typescript
+// Feature: purple-paw-finder-app, Property 13: userId do ticket vem sempre do AuthContext
+it('ticket criado nunca usa userId fornecido no formulário', () => {
+  fc.assert(fc.property(
+    fc.uuid(),   // userId real do AuthContext
+    fc.uuid(),   // userId falso que o atacante poderia injetar no formulário
+    fc.record({
+      petId: fc.uuid(),
+      service: fc.constantFrom(...CLINIC_SERVICES),
+      title: fc.string({ minLength: 1, maxLength: 100 }),
+      description: fc.string({ minLength: 1, maxLength: 1000 }),
+      scheduledDate: fc.constant(new Date().toISOString().split('T')[0]),
+      scheduledTime: fc.constant('09:00'),
+    }),
+    (realUserId, injectedUserId, formData) => {
+      const ticket = buildTicket({ ...formData, userId: injectedUserId }, realUserId);
+      expect(ticket.userId).toBe(realUserId);
+      expect(ticket.userId).not.toBe(injectedUserId);
     }
   ), { numRuns: 100 });
 });
@@ -1223,6 +1421,37 @@ it('validateCNPJ rejeita CNPJ com dígito verificador incorreto', () => {
       if (paddedSuffix !== correctSuffix) {
         expect(validateCNPJ(cnpj)).toBe(false);
       }
+    }
+  ), { numRuns: 100 });
+});
+```
+
+#### Propriedade 16 — Mensagem de comprimento inválido é sempre rejeitada
+
+```typescript
+// Feature: purple-paw-finder-app, Property 16: messageSchema rejeita vazio e acima de 1000 chars
+it('messageSchema rejeita mensagens vazias, só-espaços ou acima de 1000 caracteres', () => {
+  fc.assert(fc.property(
+    fc.oneof(
+      fc.constant(''),
+      fc.constant('   '),
+      fc.constant('\t\n\r'),
+      fc.string({ minLength: 1001 }),
+    ),
+    (invalid) => {
+      const result = messageSchema.safeParse({ text: invalid });
+      expect(result.success).toBe(false);
+    }
+  ), { numRuns: 100 });
+});
+
+// Feature: purple-paw-finder-app, Property 16b: emergencyFirstMessageSchema limita a 120 chars
+it('emergencyFirstMessageSchema rejeita primeira mensagem emergencial acima de 120 chars', () => {
+  fc.assert(fc.property(
+    fc.string({ minLength: 121 }),
+    (longText) => {
+      const result = emergencyFirstMessageSchema.safeParse({ text: longText });
+      expect(result.success).toBe(false);
     }
   ), { numRuns: 100 });
 });

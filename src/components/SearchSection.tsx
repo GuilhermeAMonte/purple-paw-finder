@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, MapPin } from 'lucide-react';
-import { CLINIC_SPECIALTIES, clinics } from './FeaturedClinics';
+import { useQuery } from '@tanstack/react-query';
+import { CLINIC_SPECIALTIES } from '@/constants/specialties';
+import { fetchClinics } from '@/lib/clinicSearch';
 
 const SearchSection = () => {
   const [location, setLocation] = useState('');
@@ -10,6 +12,12 @@ const SearchSection = () => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [noResults, setNoResults] = useState(false);
+
+  const { data: clinics = [] } = useQuery({
+    queryKey: ['clinics'],
+    queryFn: fetchClinics,
+    staleTime: 30_000,
+  });
 
   // Function to normalize text
   const normalize = (str: string) =>

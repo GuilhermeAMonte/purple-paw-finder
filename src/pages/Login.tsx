@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Eye, EyeOff, Heart, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { loginSchema } from '@/schemas/auth.schemas';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -20,45 +21,29 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const parsed = loginSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      toast({
+        title: "Verifique os dados",
+        description: parsed.error.issues[0]?.message ?? "Preencha os campos corretamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
-
-    // Basic validation
-    if (!email || !password) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid email.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      await login(email, password);
-      
+      const loggedUser = await login(email, password);
+
       toast({
         title: "Success!",
         description: "Login successful.",
       });
-      
-      // Redirect based on user type
-      const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      if (userData.userType === 'clinic' && !userData.isProfileComplete) {
-        navigate('/clinic-setup');
-      } else if (userData.userType === 'clinic') {
-        navigate('/clinic-dashboard');
+
+      // Redireciona conforme o tipo de usuário carregado da sessão.
+      if (loggedUser?.userType === 'clinic') {
+        navigate(loggedUser.isProfileComplete ? '/clinic-dashboard' : '/clinic-setup');
       } else {
         navigate('/');
       }

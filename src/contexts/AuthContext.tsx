@@ -1,32 +1,31 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-// Função simples de hash para ambiente de testes (não usar em produção)
-function simpleHash(str: string): string {
-  let hash = 0, i, chr;
-  if (str.length === 0) return hash.toString();
-  for (i = 0; i < str.length; i++) {
-    chr = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + chr;
-    hash |= 0;
-  }
-  return hash.toString();
-}
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
+import type { PlanType, UserType, TablesUpdate } from '@/types/database';
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;
-  userType: 'client' | 'clinic';
+  userType: UserType;
   isProfileComplete?: boolean;
-  plan?: 'free' | 'basic' | 'intermediary' | 'experience';
+  plan?: PlanType;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string, userType: 'client' | 'clinic', plan?: 'free' | 'basic' | 'intermediary' | 'experience') => Promise<boolean>;
+  login: (email: string, password: string) => Promise<User | null>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    userType: UserType,
+    plan?: PlanType,
+  ) => Promise<User | null>;
   logout: () => void;
   isAuthenticated: boolean;
-  updateUserProfile: (profileData: any) => Promise<void>;
+  loading: boolean;
+  updateUserProfile: (profileData: Partial<User> & Record<string, unknown>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,105 +38,154 @@ export const useAuth = () => {
   return context;
 };
 
+/**
+ * Carrega o User da aplicação a partir da sessão autenticada, buscando o
+ * profile (e o plano, se for clínica). A identidade vem sempre do JWT da
+ * sessão — nunca de dados fornecidos pelo cliente.
+ */
+async function loadUserFromSession(session: Session): Promise<User | null> {
+  const authUser = session.user;
+
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('name, user_type, is_profile_complete')
+    .eq('id', authUser.id)
+    .single();
+
+  if (error || !profile) {
+    // O profile é criado por trigger no signup; logo após o registro pode
+    // haver uma janela curta até estar disponível. Não propagamos detalhes.
+    console.warn('[Auth] Profile ainda não disponível para a sessão atual');
+    return null;
+  }
+
+  let plan: PlanType | undefined;
+  if (profile.user_type === 'clinic') {
+    const { data: clinic } = await supabase
+      .from('clinics')
+      .select('plan')
+      .eq('id', authUser.id)
+      .single();
+    plan = clinic?.plan;
+  }
+
+  return {
+    id: authUser.id,
+    name: profile.name,
+    email: authUser.email ?? '',
+    userType: profile.user_type,
+    isProfileComplete: profile.is_profile_complete,
+    plan,
+  };
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Recuperar usuário do localStorage ao inicializar
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    let mounted = true;
+
+    // 1. Sessão existente ao carregar a página.
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const loaded = await loadUserFromSession(session);
+        if (mounted) setUser(loaded);
+      }
+      if (mounted) setLoading(false);
+    });
+
+    // 2. Reage a login/logout/refresh de token em qualquer aba.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session) {
+        const loaded = await loadUserFromSession(session);
+        if (mounted) setUser(loaded);
+      } else if (mounted) {
+        setUser(null);
+      }
+      if (mounted) setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const register = useCallback(async (name: string, email: string, password: string, userType: 'client' | 'clinic', plan?: 'free' | 'basic' | 'intermediary' | 'experience'): Promise<boolean> => {
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+  const register = useCallback(async (
+    name: string,
+    email: string,
+    password: string,
+    userType: UserType,
+    plan?: PlanType,
+  ): Promise<User | null> => {
+    // name/user_type/plan vão em metadata; o trigger handle_new_user() cria
+    // as linhas em profiles (e clinics, se for clínica).
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name, user_type: userType, plan: userType === 'clinic' ? plan : undefined },
+      },
+    });
 
-      const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
-      if (existingUsers.some((u: any) => u.email === email)) {
-        throw new Error('Email já cadastrado');
-      }
-
-      const hashedPassword = simpleHash(password); // Hash simples
-
-      const newUser = {
-        id: Date.now().toString(),
-        name,
-        email,
-        password: hashedPassword,
-        userType,
-        plan: userType === 'clinic' ? plan : undefined,
-        isProfileComplete: userType === 'client'
-      };
-
-      console.log('Criando novo usuário:', newUser);
-
-      const updatedUsers = [...existingUsers, newUser];
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
-      
-      console.log('Usuário salvo no localStorage users:', updatedUsers);
-
-      return true;
-    } catch (error) {
-      throw error;
+    if (error) {
+      // Mensagem genérica — não confirma existência do e-mail (Req 1.3).
+      throw new Error('Não foi possível completar o cadastro');
     }
+
+    // Se a confirmação de e-mail estiver desativada, já existe sessão →
+    // autentica de imediato. Caso contrário, retorna null (aguarda confirmação).
+    if (data.session) {
+      const loaded = await loadUserFromSession(data.session);
+      setUser(loaded);
+      return loaded;
+    }
+    return null;
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const foundUser = users.find((u: any) => u.email === email);
-
-      console.log('Tentativa de login para:', email);
-      console.log('Usuário encontrado:', foundUser);
-
-      if (!foundUser || simpleHash(password) !== foundUser.password) {
-        throw new Error('Credenciais inválidas');
-      }
-
-      const userWithoutPassword = {
-        id: foundUser.id,
-        name: foundUser.name,
-        email: foundUser.email,
-        userType: foundUser.userType,
-        isProfileComplete: foundUser.isProfileComplete
-      };
-
-      console.log('Usuário logado:', userWithoutPassword);
-
-      setUser(userWithoutPassword);
-      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-
-      return true;
-    } catch (error) {
-      throw error;
+  const login = useCallback(async (email: string, password: string): Promise<User | null> => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.session) {
+      // Mensagem genérica — não revela se é e-mail ou senha (Req 2.2).
+      throw new Error('E-mail ou senha incorretos');
     }
-  };
+    // Carrega o user de imediato para que o redirect pós-login seja correto
+    // (não dá pra esperar o onAuthStateChange, que é assíncrono).
+    const loaded = await loadUserFromSession(data.session);
+    setUser(loaded);
+    return loaded;
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
+    void supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('user');
-  };
+  }, []);
 
-  // Adicionar tipagem ao profileData
-  const updateUserProfile = async (profileData: Partial<User>) => {
+  const updateUserProfile = useCallback(async (
+    profileData: Partial<User> & Record<string, unknown>,
+  ) => {
     if (!user) return;
 
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const userIndex = users.findIndex((u: any) => u.id === user.id);
+    // Mapeia apenas as colunas conhecidas da tabela profiles. Campos
+    // específicos de clínica (endereço, CNPJ, especialidades…) serão
+    // persistidos na tabela clinics nas tarefas de onboarding (Task 18/19).
+    const profileUpdate: TablesUpdate<'profiles'> = { is_profile_complete: true };
+    if (typeof profileData.name === 'string') profileUpdate.name = profileData.name;
+    if (typeof profileData.phone === 'string') profileUpdate.phone = profileData.phone;
+    if (typeof profileData.address === 'string') profileUpdate.address = profileData.address;
 
-    if (userIndex !== -1) {
-      users[userIndex] = { ...users[userIndex], ...profileData, isProfileComplete: true };
-      localStorage.setItem('users', JSON.stringify(users));
+    const { error } = await supabase
+      .from('profiles')
+      .update(profileUpdate)
+      .eq('id', user.id);
 
-      const updatedUser = { ...user, ...profileData, isProfileComplete: true };
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+    if (error) {
+      throw new Error('Não foi possível salvar o perfil');
     }
-  };
+
+    setUser((prev) => (prev ? { ...prev, ...profileData, isProfileComplete: true } : prev));
+  }, [user]);
 
   const value = {
     user,
@@ -145,7 +193,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     register,
     logout,
     isAuthenticated: !!user,
-    updateUserProfile
+    loading,
+    updateUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

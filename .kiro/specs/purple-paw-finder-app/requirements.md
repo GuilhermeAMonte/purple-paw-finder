@@ -45,6 +45,7 @@ A stack atual é React 18 + TypeScript + Vite + shadcn/ui + Tailwind CSS + React
 6. IF o tipo de usuário for `clinic` e nenhum plano estiver selecionado, THEN THE Validator SHALL bloquear a criação da conta e exibir erro no campo de plano.
 7. THE Sistema SHALL nunca persistir a senha em texto puro no `localStorage`; a senha SHALL ser processada por uma função de hash antes do armazenamento.
 8. THE Sistema SHALL nunca incluir senhas, hashes de senha, tokens ou identificadores de sessão em mensagens de erro exibidas ao usuário ou em outputs acessíveis via interface.
+9. WHEN o formulário de cadastro exibir campo de confirmação de senha, THE Validator SHALL rejeitar a submissão se o valor de "confirmar senha" for diferente do valor de "senha", exibindo erro no campo de confirmação sem revelar o conteúdo de nenhum dos campos.
 
 ---
 
@@ -60,7 +61,7 @@ A stack atual é React 18 + TypeScript + Vite + shadcn/ui + Tailwind CSS + React
 4. WHEN um usuário tenta navegar para uma rota privada, THE Router SHALL verificar a existência de uma sessão válida no `localStorage` antes de conceder acesso, bloqueando o acesso caso a sessão esteja ausente ou corrompida.
 5. IF um usuário não autenticado tentar acessar uma rota privada, THEN THE Router SHALL redirecionar para a página de login.
 6. THE Sistema SHALL nunca expor o hash da senha ou dados de sessão de outros usuários em qualquer resposta do sistema, incluindo respostas para usuários autenticados acessando rotas protegidas.
-7. IF um usuário falhar no login 5 vezes consecutivas em um intervalo de 5 minutos, THEN THE Sistema SHALL bloquear novas tentativas de login para aquele e-mail por 15 minutos, exibindo mensagem informativa sem revelar o motivo técnico do bloqueio.
+7. IF um usuário acumular 5 tentativas de login com falha dentro de uma janela móvel de 5 minutos para o mesmo e-mail, THEN THE Sistema SHALL bloquear novas tentativas de login para aquele e-mail por 15 minutos — independentemente da senha fornecida —, exibindo mensagem informativa sem revelar o motivo técnico do bloqueio.
 8. WHEN a sessão do usuário autenticado completar 8 horas sem atividade, THE AuthContext SHALL encerrar automaticamente a sessão, remover os dados do `localStorage` e exibir aviso ao usuário antes de redirecionar para a página de login.
 
 ---
@@ -298,3 +299,19 @@ A stack atual é React 18 + TypeScript + Vite + shadcn/ui + Tailwind CSS + React
 3. THE Sistema SHALL garantir contraste mínimo de 4,5:1 entre texto e fundo em todos os componentes de interface, conforme WCAG 2.1 nível AA.
 4. THE Sistema SHALL permitir a navegação completa pelos formulários de cadastro, login e criação de ticket utilizando apenas o teclado (Tab para avançar, Shift+Tab para recuar, Enter para submeter, Space para marcar checkboxes), sem armadilhas de foco.
 5. THE Sistema SHALL associar cada campo de formulário ao seu respectivo `<label>` via atributo `htmlFor` igual ao `id` do campo, em todos os formulários da aplicação.
+
+---
+
+### Requirement 17: Configuração Visual da Clínica
+
+**User Story:** Como Clínica, quero personalizar a identidade visual do meu perfil (logotipo, foto de capa e cor principal), para que minha página pública tenha aparência profissional e reconhecível.
+
+#### Acceptance Criteria
+
+1. WHEN a Clínica acessa `/clinic-visual-setup`, THE Router SHALL permitir acesso apenas a usuários com `userType === 'clinic'` autenticados; usuários não autenticados SHALL ser redirecionados para `/login` e clientes autenticados SHALL ser redirecionados para `/`.
+2. WHEN a Clínica tenta fazer upload de logotipo ou foto de capa, THE Sistema SHALL validar o tipo MIME (`image/jpeg`, `image/png`, `image/webp`), o tamanho máximo de 5 MB e os magic bytes antes de iniciar qualquer processamento; IF qualquer critério falhar, THE Sistema SHALL exibir mensagem de erro descritiva e descartar o arquivo.
+3. WHEN o upload de imagem é válido, THE Sistema SHALL exibir uma pré-visualização da imagem antes de persistir, permitindo que a Clínica confirme ou cancele.
+4. WHEN a Clínica seleciona uma cor principal, THE Sistema SHALL aceitar apenas valores de cor no formato hexadecimal de 6 dígitos (`#RRGGBB`), rejeitando formatos inválidos com erro de campo.
+5. WHEN a Clínica submete o formulário de configuração visual com dados válidos, THE Sistema SHALL persistir `logoUrl`, `coverUrl` e `primaryColor` no perfil da clínica via `updateUserProfile` e redirecionar para `/clinic-dashboard`; IF a persistência falhar, THE Sistema SHALL exibir toast de erro sem redirecionar e preservar os campos preenchidos.
+6. THE Sistema SHALL exibir os dados de configuração visual já salvos (logotipo, capa, cor) como estado inicial do formulário, para que a Clínica possa editar valores existentes.
+7. WHEN a Clínica conclui a configuração visual após o onboarding inicial, THE Sistema SHALL marcar `isProfileComplete: true` no perfil do usuário autenticado no `localStorage`.

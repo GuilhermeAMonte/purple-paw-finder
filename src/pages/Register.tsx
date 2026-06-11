@@ -8,6 +8,7 @@ import { Eye, EyeOff, Heart, ArrowLeft, Check, X, User, Building2 } from 'lucide
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { registerSchema } from '@/schemas/auth.schemas';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -88,98 +89,50 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const parsed = registerSchema.safeParse({
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+      confirmPassword: formData.confirmPassword,
+      userType,
+      plan: userType === 'clinic' ? selectedPlan : undefined,
+    });
+
+    if (!parsed.success) {
+      toast({
+        title: "Verifique o formulário",
+        description: parsed.error.issues[0]?.message ?? "Há campos inválidos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
-
-    // Validações
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword || 
-        !formData.phone || !formData.cep || !formData.estado || !formData.cidade || !formData.rua || !formData.numero) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      toast({
-        title: "Erro",
-        description: "Por favor, insira um e-mail válido.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    if (!isPasswordValid) {
-      toast({
-        title: "Erro",
-        description: "A senha não atende aos critérios de segurança.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    if (!passwordsMatch) {
-      toast({
-        title: "Erro",
-        description: "As senhas não coincidem.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      // Registrar o usuário
-      await register(formData.name, formData.email, formData.password, userType, userType === 'clinic' ? selectedPlan : undefined);
-      
-      // Obter o ID do usuário recém-criado
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const newUser = users.find((u: any) => u.email === formData.email);
-      
-      console.log('Todos os usuários:', users);
-      console.log('Usuário encontrado:', newUser);
-      
+      const newUser = await register(parsed.data.name, parsed.data.email, parsed.data.password, parsed.data.userType, parsed.data.plan);
+
       if (newUser) {
-        // Salvar informações adicionais no localStorage
-        console.log('Salvando dados do usuário:', newUser.id, formData);
-        localStorage.setItem(`phone_${newUser.id}`, formData.phone);
-        localStorage.setItem(`cep_${newUser.id}`, formData.cep);
-        localStorage.setItem(`estado_${newUser.id}`, formData.estado);
-        localStorage.setItem(`cidade_${newUser.id}`, formData.cidade);
-        localStorage.setItem(`rua_${newUser.id}`, formData.rua);
-        localStorage.setItem(`numero_${newUser.id}`, formData.numero);
-        console.log('Dados salvos no localStorage para usuário:', newUser.id);
-        
-        // Verificar se os dados foram salvos
-        console.log('Verificando dados salvos:');
-        console.log('phone:', localStorage.getItem(`phone_${newUser.id}`));
-        console.log('cep:', localStorage.getItem(`cep_${newUser.id}`));
-        console.log('estado:', localStorage.getItem(`estado_${newUser.id}`));
-        console.log('cidade:', localStorage.getItem(`cidade_${newUser.id}`));
-        console.log('rua:', localStorage.getItem(`rua_${newUser.id}`));
-        console.log('numero:', localStorage.getItem(`numero_${newUser.id}`));
+        // Auto-login (confirmação de e-mail desativada): segue para o onboarding.
+        toast({ title: "Sucesso!", description: "Conta criada com sucesso." });
+        navigate('/clinic-setup');
+      } else {
+        // Confirmação de e-mail ativa: orienta o usuário a confirmar antes de entrar.
+        toast({
+          title: "Quase lá!",
+          description: "Verifique seu e-mail para confirmar a conta e depois faça login.",
+        });
+        navigate('/login');
       }
-      
-      toast({
-        title: "Sucesso!",
-        description: "Conta criada com sucesso. Faça login para continuar.",
-      });
-      
-      navigate('/login');
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao criar conta. Tente novamente.",
+        description: error instanceof Error ? error.message : "Erro ao criar conta. Tente novamente.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (

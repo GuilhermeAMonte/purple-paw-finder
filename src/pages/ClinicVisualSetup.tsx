@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Heart, Camera, Clock, Globe, MapPin, Star } from 'lucide-react';
+import { Heart, Camera, Clock, Globe, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { getClinic, saveClinicVisual, type WeekSchedule } from '@/lib/clinics';
 
 const ClinicVisualSetup = () => {
   const [formData, setFormData] = useState({
@@ -34,7 +35,7 @@ const ClinicVisualSetup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [is24Hours, setIs24Hours] = useState(false);
-  const { updateUserProfile, user } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -57,15 +58,35 @@ const ClinicVisualSetup = () => {
     '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30'
   ];
 
-  // Verificar se foi selecionado atendimento 24h na página anterior
+  // Carrega a flag 24h e horários já salvos da clínica.
   useEffect(() => {
-    if (user?.id) {
-      // Buscar dados salvos do ClinicSetup no localStorage ou contexto
-      const savedIs24Hours = localStorage.getItem(`is24Hours_${user.id}`);
-      if (savedIs24Hours === 'true') {
-        setIs24Hours(true);
+    if (!user?.id) return;
+    let active = true;
+
+    getClinic(user.id).then((clinic) => {
+      if (!active || !clinic) return;
+      setIs24Hours(clinic.is_24_hours);
+
+      // Pré-preenche horários salvos (formato do banco usa isOpen).
+      const saved = clinic.schedules as Record<string, { open: string; close: string; isOpen: boolean }>;
+      if (saved && Object.keys(saved).length > 0) {
+        setFormData((prev) => {
+          const merged = { ...prev.openingHours };
+          for (const day of Object.keys(merged)) {
+            if (saved[day]) {
+              merged[day as keyof typeof merged] = {
+                open: saved[day].open,
+                close: saved[day].close,
+                closed: !saved[day].isOpen,
+              };
+            }
+          }
+          return { ...prev, openingHours: merged };
+        });
       }
-    }
+    });
+
+    return () => { active = false; };
   }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -132,35 +153,34 @@ const ClinicVisualSetup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.id) return;
+
     setIsLoading(true);
 
+    // Mapeia o formulário (closed) para o formato do banco (isOpen).
+    const schedules: WeekSchedule = {};
+    for (const [day, h] of Object.entries(formData.openingHours)) {
+      schedules[day] = { open: h.open, close: h.close, isOpen: !h.closed };
+    }
+
     try {
-      // Salvar as configurações visuais incluindo se é 24h
-      await updateUserProfile({
-        visualSettings: formData,
-        is24Hours
-      });
-      
-      // Salvar no localStorage para persistir
-      if (user?.id) {
-        localStorage.setItem(`is24Hours_${user.id}`, is24Hours.toString());
-      }
-      
+      await saveClinicVisual(user.id, schedules, is24Hours);
+
       toast({
         title: "Sucesso!",
         description: "Configuração visual da clínica salva com sucesso.",
       });
-      
+
       navigate('/clinic-dashboard');
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro",
-        description: "Erro ao salvar configurações visuais. Tente novamente.",
+        description: error instanceof Error ? error.message : "Erro ao salvar. Tente novamente.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   const handleSkip = () => {

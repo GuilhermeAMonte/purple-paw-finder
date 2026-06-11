@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -343,8 +343,8 @@ const ClinicDashboard = () => {
               <span className="text-sm text-gray-600">Hello, {user?.name}</span>
               <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <Settings className="w-4 h-4" />
+                  <Button variant="ghost" size="sm" className="group hover:bg-purple-50 transition-colors">
+                    <Settings className="w-4 h-4 transition-transform duration-500 group-hover:rotate-90" />
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -430,8 +430,8 @@ const ClinicDashboard = () => {
                   </div>
                 </DialogContent>
               </Dialog>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="w-4 h-4" />
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="group hover:bg-red-50 hover:text-red-600 transition-colors">
+                <LogOut className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
               </Button>
             </div>
           </div>
@@ -440,21 +440,22 @@ const ClinicDashboard = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Navigation Menu */}
-        <div className="mb-6">
-          <div className="flex space-x-1 bg-white rounded-lg p-1 shadow-sm border border-purple-100">
+        <div className="mb-6 sticky top-4 z-10">
+          <div className="flex gap-1 bg-white/80 backdrop-blur-md rounded-xl p-1.5 shadow-sm border border-purple-100 overflow-x-auto">
             {menuItems.map((item) => {
               const Icon = item.icon;
+              const active = currentSection === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => setCurrentSection(item.id)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-colors ${
-                    currentSection === item.id 
-                      ? 'bg-purple-100 text-purple-700' 
-                      : 'text-gray-600 hover:bg-gray-50'
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg whitespace-nowrap transition-all duration-300 hover:scale-[1.03] active:scale-95 ${
+                    active
+                      ? 'gradient-purple text-white shadow-md shadow-purple-300/50'
+                      : 'text-gray-600 hover:bg-purple-50 hover:text-purple-700'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className={`w-4 h-4 transition-transform duration-300 ${active ? 'scale-110' : ''}`} />
                   <span className="font-medium">{item.label}</span>
                 </button>
               );
@@ -464,7 +465,7 @@ const ClinicDashboard = () => {
 
         {/* Content based on selected section */}
         {currentSection === 'aprovacoes' && (
-          <div>
+          <div className="animate-fade-in-up">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -487,7 +488,7 @@ const ClinicDashboard = () => {
         )}
 
         {currentSection === 'contatos' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
             {/* Lista de Clientes */}
             <div className="lg:col-span-1">
               <Card className="h-[calc(100vh-12rem)]">
@@ -635,7 +636,7 @@ const ClinicDashboard = () => {
         )}
 
         {currentSection === 'emergencias' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
             <div className="lg:col-span-1">
               <Card className="h-[calc(100vh-12rem)] border-red-200">
                 <CardHeader className="bg-red-50">
@@ -774,7 +775,7 @@ const ClinicDashboard = () => {
         )}
 
         {currentSection === 'calendario' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in-up">
             {/* Calendário */}
             <Card>
               <CardHeader>
@@ -900,7 +901,7 @@ const ClinicDashboard = () => {
         )}
 
         {currentSection === 'pacientes' && (
-          <Card>
+          <Card className="animate-fade-in-up">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <UserCheck className="w-5 h-5 text-purple-600" />
@@ -961,7 +962,7 @@ const ClinicDashboard = () => {
         )}
 
         {currentSection === 'horarios' && (
-          <Card>
+          <Card className="animate-fade-in-up">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Clock className="w-5 h-5 text-purple-600" />

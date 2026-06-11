@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { FavoritesProvider } from "./contexts/FavoritesContext";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { PrivateRoute, ClientRoute, ClinicRoute } from "./components/guards/RouteGuards";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -28,23 +30,32 @@ const App = () => (
       <AuthProvider>
         <FavoritesProvider>
           <BrowserRouter>
+            <ErrorBoundary>
             <Routes>
+              {/* Públicas */}
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/client-register" element={<ClientRegister />} />
-              <Route path="/clinic/:id" element={<ClinicDetails />} />
-              <Route path="/clinic/:id/create-ticket" element={<CreateTicket />} />
-              <Route path="/clinic/:id/chat" element={<Chat />} />
-              <Route path="/chat/:ticketId" element={<Chat />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/my-appointments" element={<MyAppointments />} />
-              <Route path="/clinic-setup" element={<ClinicSetup />} />
-              <Route path="/clinic-visual-setup" element={<ClinicVisualSetup />} />
-              <Route path="/clinic-dashboard" element={<ClinicDashboard />} />
+
+              {/* Compartilhadas (qualquer usuário autenticado) */}
+              <Route path="/clinic/:id" element={<PrivateRoute><ClinicDetails /></PrivateRoute>} />
+              <Route path="/clinic/:id/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
+
+              {/* Exclusivas de Cliente */}
+              <Route path="/clinic/:id/create-ticket" element={<ClientRoute><CreateTicket /></ClientRoute>} />
+              <Route path="/chat/:ticketId" element={<ClientRoute><Chat /></ClientRoute>} />
+              <Route path="/profile" element={<ClientRoute><Profile /></ClientRoute>} />
+              <Route path="/my-appointments" element={<ClientRoute><MyAppointments /></ClientRoute>} />
+
+              {/* Exclusivas de Clínica */}
+              <Route path="/clinic-setup" element={<ClinicRoute><ClinicSetup /></ClinicRoute>} />
+              <Route path="/clinic-visual-setup" element={<ClinicRoute><ClinicVisualSetup /></ClinicRoute>} />
+              <Route path="/clinic-dashboard" element={<ClinicRoute><ClinicDashboard /></ClinicRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </ErrorBoundary>
           </BrowserRouter>
           <Toaster />
           <Sonner />

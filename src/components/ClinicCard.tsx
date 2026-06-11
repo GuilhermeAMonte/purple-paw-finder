@@ -56,12 +56,12 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
   return (
     <div 
       onClick={handleViewDetails}
-      className="bg-card rounded-2xl apple-shadow hover-lift smooth-transition border border-border/40 overflow-hidden cursor-pointer group"
+      className="bg-card rounded-2xl apple-shadow card-interactive border border-border/40 overflow-hidden cursor-pointer group"
     >
       {/* Image */}
       <div className="relative h-48 bg-gradient-to-br from-muted/50 to-muted/20">
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-16 h-16 bg-foreground rounded-full flex items-center justify-center">
+          <div className="w-16 h-16 bg-foreground rounded-full flex items-center justify-center transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
             <Heart className="w-8 h-8 text-background" />
           </div>
         </div>

@@ -126,29 +126,32 @@ const ClientRegister = () => {
 
     setIsLoading(true);
     try {
-      await register(formData.name, formData.email, formData.password, 'client');
-      
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const newUser = users.find((u: any) => u.email === formData.email);
-      
+      const newUser = await register(formData.name, formData.email, formData.password, 'client');
+
       if (newUser) {
-        localStorage.setItem(`phone_${newUser.id}`, formData.phone);
-        localStorage.setItem(`cep_${newUser.id}`, formData.cep);
-        localStorage.setItem(`estado_${newUser.id}`, formData.estado);
-        localStorage.setItem(`cidade_${newUser.id}`, formData.cidade);
-        localStorage.setItem(`rua_${newUser.id}`, formData.rua);
-        localStorage.setItem(`numero_${newUser.id}`, formData.numero);
-        
+        // Auto-login: salva o primeiro pet vinculado ao id real do usuário.
+        // (Pets ainda residem no localStorage até a migração para o banco.)
         const petWithId = { ...petData, id: Date.now().toString() };
         localStorage.setItem(`pets_${newUser.id}`, JSON.stringify([petWithId]));
+
+        toast({ title: "Sucesso!", description: "Conta criada com sucesso!" });
+        navigate('/');
+      } else {
+        toast({
+          title: "Quase lá!",
+          description: "Verifique seu e-mail para confirmar a conta e depois faça login.",
+        });
+        navigate('/login');
       }
-      
-      toast({ title: "Sucesso!", description: "Conta criada com sucesso!" });
-      navigate('/login');
-    } catch (error: any) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao criar conta.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
