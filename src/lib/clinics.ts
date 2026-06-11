@@ -75,7 +75,7 @@ export async function saveClinicSetup(
 
   if (clinicError) {
     console.error('[clinics] Erro ao salvar setup:', clinicError.message);
-    throw new Error('Não foi possível salvar as informações da clínica');
+    throw new Error(clinicError.message);
   }
 
   // Marca o perfil como completo.
@@ -86,7 +86,7 @@ export async function saveClinicSetup(
 
   if (profileError) {
     console.error('[clinics] Erro ao atualizar perfil:', profileError.message);
-    throw new Error('Não foi possível salvar as informações da clínica');
+    throw new Error(profileError.message);
   }
 }
 

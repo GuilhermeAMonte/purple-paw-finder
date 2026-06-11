@@ -52,6 +52,7 @@ export interface CreateTicketInput {
   description: string;
   scheduled_date: string;
   scheduled_time: string;
+  referral_file_url?: string | null;
   is_emergency?: boolean;
 }
 

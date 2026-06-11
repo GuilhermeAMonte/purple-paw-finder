@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,9 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Heart, ArrowLeft, Check, X, User, Building2 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { registerSchema } from '@/schemas/auth.schemas';
+import HCaptchaWidget from '@/components/HCaptchaWidget';
+import type HCaptcha from '@hcaptcha/react-hcaptcha';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -28,6 +31,10 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const captchaRef = useRef<HCaptcha>(null);
+  const captchaRequired = !!import.meta.env.VITE_HCAPTCHA_SITE_KEY;
   const navigate = useNavigate();
   const { toast } = useToast();
   const { register } = useAuth();
@@ -108,14 +115,19 @@ const Register = () => {
       return;
     }
 
+    if (captchaRequired && !captchaToken) {
+      toast({ title: 'Complete a verificação de segurança', variant: 'destructive' });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const newUser = await register(parsed.data.name, parsed.data.email, parsed.data.password, parsed.data.userType, parsed.data.plan);
+      const newUser = await register(parsed.data.name, parsed.data.email, parsed.data.password, parsed.data.userType, parsed.data.plan, captchaToken || undefined);
 
       if (newUser) {
         // Auto-login (confirmação de e-mail desativada): segue para o onboarding.
         toast({ title: "Sucesso!", description: "Conta criada com sucesso." });
-        navigate('/clinic-setup');
+        navigate('/clinic-dashboard');
       } else {
         // Confirmação de e-mail ativa: orienta o usuário a confirmar antes de entrar.
         toast({
@@ -125,6 +137,8 @@ const Register = () => {
         navigate('/login');
       }
     } catch (error) {
+      captchaRef.current?.resetCaptcha();
+      setCaptchaToken('');
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : "Erro ao criar conta. Tente novamente.",
@@ -326,13 +340,13 @@ const Register = () => {
               )}
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-gray-700">
-                  Full name
+                  Nome completo do responsável
                 </Label>
                 <Input
                   id="name"
                   name="name"
                   type="text"
-                  placeholder="Your full name"
+                  placeholder="Ex: João da Silva"
                   value={formData.name}
                   onChange={handleInputChange}
                   required
@@ -343,13 +357,13 @@ const Register = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-gray-700">
-                  E-mail
+                  E-mail de acesso
                 </Label>
                 <Input
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="your@email.com"
+                  placeholder="clinica@email.com"
                   value={formData.email}
                   onChange={handleInputChange}
                   required
@@ -360,7 +374,7 @@ const Register = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="phone" className="text-gray-700">
-                  Phone
+                  Telefone de contato
                 </Label>
                 <Input
                   id="phone"
@@ -377,7 +391,7 @@ const Register = () => {
 
               {/* Campos de Endereço */}
               <div className="space-y-4 pt-4 border-t border-purple-100">
-                <h3 className="text-lg font-semibold text-gray-800">Address</h3>
+                <h3 className="text-lg font-semibold text-gray-800">Endereço da clínica</h3>
                 
                 <div className="space-y-2">
                   <Label htmlFor="cep" className="text-gray-700">
@@ -399,13 +413,13 @@ const Register = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="estado" className="text-gray-700">
-                      State
+                      Estado (UF)
                     </Label>
                     <Input
                       id="estado"
                       name="estado"
                       type="text"
-                      placeholder="UF"
+                      placeholder="SP"
                       value={formData.estado}
                       onChange={handleInputChange}
                       required
@@ -416,13 +430,13 @@ const Register = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="cidade" className="text-gray-700">
-                      City
+                      Cidade
                     </Label>
                     <Input
                       id="cidade"
                       name="cidade"
                       type="text"
-                      placeholder="Your city"
+                      placeholder="São Paulo"
                       value={formData.cidade}
                       onChange={handleInputChange}
                       required
@@ -433,13 +447,13 @@ const Register = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="rua" className="text-gray-700">
-                    Street/Avenue
+                    Rua / Avenida
                   </Label>
                   <Input
                     id="rua"
                     name="rua"
                     type="text"
-                    placeholder="Street or avenue name"
+                    placeholder="Rua das Flores, 123"
                     value={formData.rua}
                     onChange={handleInputChange}
                     required
@@ -449,13 +463,13 @@ const Register = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="numero" className="text-gray-700">
-                    Number
+                    Número
                   </Label>
                   <Input
                     id="numero"
                     name="numero"
                     type="text"
-                    placeholder="House number"
+                    placeholder="123"
                     value={formData.numero}
                     onChange={handleInputChange}
                     required
@@ -560,10 +574,33 @@ const Register = () => {
                 )}
               </div>
 
+              {/* Consentimento LGPD */}
+              <div className="flex items-start gap-3 py-2">
+                <Checkbox
+                  id="consent"
+                  checked={consentAccepted}
+                  onCheckedChange={(v) => setConsentAccepted(v === true)}
+                  className="mt-0.5"
+                />
+                <label htmlFor="consent" className="text-xs text-gray-600 leading-relaxed cursor-pointer">
+                  Li e aceito os{' '}
+                  <Link to="/termos" target="_blank" className="text-purple-600 hover:underline font-medium">Termos de Uso</Link>
+                  {' '}e a{' '}
+                  <Link to="/privacidade" target="_blank" className="text-purple-600 hover:underline font-medium">Política de Privacidade</Link>
+                  , incluindo o tratamento dos meus dados pessoais conforme descrito.
+                </label>
+              </div>
+
+              <HCaptchaWidget
+                ref={captchaRef}
+                onVerify={setCaptchaToken}
+                onExpire={() => setCaptchaToken('')}
+              />
+
               <Button
                 type="submit"
                 className="w-full gradient-purple text-white hover:opacity-90 transition-opacity"
-                disabled={isLoading || !isPasswordValid || !passwordsMatch}
+                disabled={isLoading || !isPasswordValid || !passwordsMatch || !consentAccepted || (captchaRequired && !captchaToken)}
               >
                 {isLoading ? "Creating account..." : "Create account"}
               </Button>

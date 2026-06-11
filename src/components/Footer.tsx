@@ -57,13 +57,21 @@ const Footer = () => {
           <div>
             <h4 className="text-sm font-semibold text-background/90 uppercase tracking-wider mb-5">Support</h4>
             <ul className="space-y-3">
-              {['Help Center', 'Terms of Use', 'Privacy Policy', 'FAQ'].map(link => (
-                <li key={link}>
-                  <a href="#" className="text-background/55 hover:text-background text-sm smooth-transition underline-grow">
-                    {link}
-                  </a>
-                </li>
-              ))}
+              <li>
+                <a href="#" className="text-background/55 hover:text-background text-sm smooth-transition underline-grow">Help Center</a>
+              </li>
+              <li>
+                <Link to="/termos" className="text-background/55 hover:text-background text-sm smooth-transition underline-grow">Terms of Use</Link>
+              </li>
+              <li>
+                <Link to="/privacidade" className="text-background/55 hover:text-background text-sm smooth-transition underline-grow">Privacy Policy</Link>
+              </li>
+              <li>
+                <Link to="/dpo" className="text-background/55 hover:text-background text-sm smooth-transition underline-grow">DPO / Data Rights</Link>
+              </li>
+              <li>
+                <a href="#" className="text-background/55 hover:text-background text-sm smooth-transition underline-grow">FAQ</a>
+              </li>
             </ul>
           </div>
         </div>

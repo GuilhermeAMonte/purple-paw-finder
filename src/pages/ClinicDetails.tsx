@@ -110,7 +110,7 @@ const ClinicDetails = () => {
             </Button>
             {clinic.is_emergency_available && (
               <Button
-                onClick={() => navigate(`/clinic/${id}/chat?emergency=true`)}
+                onClick={() => navigate(`/clinic/${id}/create-ticket?emergency=true`)}
                 className="bg-red-500 text-white hover:bg-red-600 px-8 py-3 rounded-2xl text-lg font-medium apple-shadow smooth-transition pulse-emergency"
               >
                 <AlertCircle className="w-5 h-5 mr-2" />

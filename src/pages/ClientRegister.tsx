@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,12 +7,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Eye, EyeOff, Heart, ArrowLeft, Check, X, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import BreedSelector from '@/components/BreedSelector';
+import { supabase } from '@/lib/supabase';
+import HCaptchaWidget from '@/components/HCaptchaWidget';
+import type HCaptcha from '@hcaptcha/react-hcaptcha';
+import { sanitizeLine, sanitizeMultiline } from '@/lib/sanitize';
 
 const ClientRegister = () => {
   const [currentStep, setCurrentStep] = useState(1);
+  const [consentAccepted, setConsentAccepted] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -37,6 +43,9 @@ const ClientRegister = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const captchaRef = useRef<HCaptcha>(null);
+  const captchaRequired = !!import.meta.env.VITE_HCAPTCHA_SITE_KEY;
   const navigate = useNavigate();
   const { toast } = useToast();
   const { register } = useAuth();
@@ -124,15 +133,24 @@ const ClientRegister = () => {
     e.preventDefault();
     if (!validateStep3()) return;
 
+    if (captchaRequired && !captchaToken) {
+      toast({ title: 'Complete a verificação de segurança', variant: 'destructive' });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const newUser = await register(formData.name, formData.email, formData.password, 'client');
+      const newUser = await register(formData.name, formData.email, formData.password, 'client', undefined, captchaToken || undefined);
 
       if (newUser) {
-        // Auto-login: salva o primeiro pet vinculado ao id real do usuário.
-        // (Pets ainda residem no localStorage até a migração para o banco.)
-        const petWithId = { ...petData, id: Date.now().toString() };
-        localStorage.setItem(`pets_${newUser.id}`, JSON.stringify([petWithId]));
+        const weightNum = petData.weight ? parseFloat(String(petData.weight).replace(/[^\d.]/g, '')) || null : null;
+        await supabase.from('pets').insert({
+          owner_id: newUser.id,
+          name:     sanitizeLine(petData.name),
+          species:  petData.species as any,
+          breed:    sanitizeLine(petData.breed),
+          weight:   weightNum,
+        });
 
         toast({ title: "Sucesso!", description: "Conta criada com sucesso!" });
         navigate('/');
@@ -144,6 +162,8 @@ const ClientRegister = () => {
         navigate('/login');
       }
     } catch (error) {
+      captchaRef.current?.resetCaptcha();
+      setCaptchaToken('');
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : "Erro ao criar conta.",
@@ -216,11 +236,11 @@ const ClientRegister = () => {
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome completo</Label>
-                    <Input id="name" name="name" value={formData.name} onChange={handleInputChange} required />
+                    <Input id="name" name="name" value={formData.name} onChange={handleInputChange} placeholder="Ex: Maria da Silva" required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">E-mail</Label>
-                    <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} required />
+                    <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="maria@email.com" autoComplete="email" required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Senha</Label>
@@ -231,6 +251,8 @@ const ClientRegister = () => {
                         type={showPassword ? "text" : "password"}
                         value={formData.password}
                         onChange={handleInputChange}
+                        placeholder="Mínimo 8 caracteres"
+                        autoComplete="new-password"
                         required
                       />
                       <Button
@@ -273,6 +295,8 @@ const ClientRegister = () => {
                         type={showConfirmPassword ? "text" : "password"}
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
+                        placeholder="Repita a senha acima"
+                        autoComplete="new-password"
                         required
                       />
                       <Button
@@ -300,29 +324,29 @@ const ClientRegister = () => {
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Telefone</Label>
-                    <Input id="phone" name="phone" value={formData.phone} onChange={handleInputChange} required />
+                    <Input id="phone" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="(11) 99999-9999" autoComplete="tel" required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cep">CEP</Label>
-                    <Input id="cep" name="cep" value={formData.cep} onChange={handleCepChange} maxLength={8} required />
+                    <Input id="cep" name="cep" value={formData.cep} onChange={handleCepChange} placeholder="00000-000" maxLength={8} required />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="estado">Estado</Label>
-                      <Input id="estado" name="estado" value={formData.estado} onChange={handleInputChange} required />
+                      <Input id="estado" name="estado" value={formData.estado} onChange={handleInputChange} placeholder="SP" maxLength={2} required />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="cidade">Cidade</Label>
-                      <Input id="cidade" name="cidade" value={formData.cidade} onChange={handleInputChange} required />
+                      <Input id="cidade" name="cidade" value={formData.cidade} onChange={handleInputChange} placeholder="São Paulo" required />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="rua">Rua</Label>
-                    <Input id="rua" name="rua" value={formData.rua} onChange={handleInputChange} required />
+                    <Label htmlFor="rua">Rua / Endereço</Label>
+                    <Input id="rua" name="rua" value={formData.rua} onChange={handleInputChange} placeholder="Rua das Flores, 123" required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="numero">Número</Label>
-                    <Input id="numero" name="numero" value={formData.numero} onChange={handleInputChange} required />
+                    <Input id="numero" name="numero" value={formData.numero} onChange={handleInputChange} placeholder="123" required />
                   </div>
                 </>
               )}
@@ -332,7 +356,7 @@ const ClientRegister = () => {
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="petName">Nome do Pet *</Label>
-                    <Input id="petName" name="name" value={petData.name} onChange={handlePetInputChange} required />
+                    <Input id="petName" name="name" value={petData.name} onChange={handlePetInputChange} placeholder="Ex: Rex" required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="petSpecies">Espécie *</Label>
@@ -374,13 +398,32 @@ const ClientRegister = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="petColor">Cor</Label>
-                    <Input id="petColor" name="color" value={petData.color} onChange={handlePetInputChange} />
+                    <Input id="petColor" name="color" value={petData.color} onChange={handlePetInputChange} placeholder="Ex: Caramelo" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="petNotes">Observações</Label>
-                    <Textarea id="petNotes" name="notes" value={petData.notes} onChange={handlePetInputChange} rows={3} />
+                    <Textarea id="petNotes" name="notes" value={petData.notes} onChange={handlePetInputChange} placeholder="Ex: Tem alergia a frango, toma remédio diário..." rows={3} />
                   </div>
                 </>
+              )}
+
+              {/* Consentimento LGPD — exibido apenas no último step */}
+              {currentStep === 3 && (
+                <div className="flex items-start gap-3 py-2">
+                  <Checkbox
+                    id="consent"
+                    checked={consentAccepted}
+                    onCheckedChange={(v) => setConsentAccepted(v === true)}
+                    className="mt-0.5"
+                  />
+                  <label htmlFor="consent" className="text-xs text-gray-600 leading-relaxed cursor-pointer">
+                    Li e aceito os{' '}
+                    <Link to="/termos" target="_blank" className="text-purple-600 hover:underline font-medium">Termos de Uso</Link>
+                    {' '}e a{' '}
+                    <Link to="/privacidade" target="_blank" className="text-purple-600 hover:underline font-medium">Política de Privacidade</Link>
+                    , incluindo o tratamento dos meus dados pessoais conforme descrito.
+                  </label>
+                </div>
               )}
 
               {/* Navigation Buttons */}
@@ -397,9 +440,16 @@ const ClientRegister = () => {
                     <ChevronRight className="w-4 h-4 ml-2" />
                   </Button>
                 ) : (
-                  <Button type="submit" disabled={isLoading} className="flex-1 gradient-purple text-white">
-                    {isLoading ? "Criando conta..." : "Finalizar cadastro"}
-                  </Button>
+                  <>
+                    <HCaptchaWidget
+                      ref={captchaRef}
+                      onVerify={setCaptchaToken}
+                      onExpire={() => setCaptchaToken('')}
+                    />
+                    <Button type="submit" disabled={isLoading || !consentAccepted || (captchaRequired && !captchaToken)} className="flex-1 gradient-purple text-white">
+                      {isLoading ? "Criando conta..." : "Finalizar cadastro"}
+                    </Button>
+                  </>
                 )}
               </div>
             </form>

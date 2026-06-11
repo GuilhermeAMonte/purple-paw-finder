@@ -48,6 +48,7 @@ const ClinicSetup = () => {
       setFormData((prev) => ({
         ...prev,
         clinicName: clinic.clinic_name ?? prev.clinicName,
+        phone: clinic.phone ?? prev.phone,
         cnpj: clinic.cnpj ?? prev.cnpj,
         address: clinic.street ?? prev.address,
         city: clinic.city ?? prev.city,
@@ -118,7 +119,11 @@ const ClinicSetup = () => {
     if (!user?.id) return;
 
     // Validação via schema (CNPJ, allowlists, comprimentos) — Req 11.1/11.2.
-    const result = clinicSetupSchema.safeParse(formData);
+    // Strip phone mask before validation (user may type (11) 9999-9999).
+    const result = clinicSetupSchema.safeParse({
+      ...formData,
+      phone: formData.phone.replace(/\D/g, ''),
+    });
     if (!result.success) {
       const firstError = result.error.issues[0];
       toast({
@@ -138,7 +143,7 @@ const ClinicSetup = () => {
         description: "Perfil da clínica configurado com sucesso.",
       });
 
-      navigate('/clinic-visual-setup');
+      navigate('/clinic-dashboard');
     } catch (error) {
       toast({
         title: "Erro",

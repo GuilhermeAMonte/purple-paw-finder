@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { sanitizeLine } from '@/lib/sanitize';
 
 // Login — validação mínima; a verificação real é no servidor (Supabase Auth).
 export const loginSchema = z.object({
@@ -21,7 +22,7 @@ const passwordSchema = z
 // Cadastro — nome, e-mail, senha forte, confirmação e (para clínica) plano.
 export const registerSchema = z
   .object({
-    name: z.string().trim().min(1, 'Informe seu nome').max(150),
+    name: z.string().trim().min(1, 'Informe seu nome').max(150).transform(sanitizeLine),
     email: z.string().trim().email('E-mail inválido'),
     password: passwordSchema,
     confirmPassword: z.string(),

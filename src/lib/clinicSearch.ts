@@ -118,8 +118,10 @@ export function filterAndSortClinics(
       spec === '' ||
       clinic.specialties.map(normalize).some((s) => s.includes(spec)) ||
       normalize(clinic.name).includes(spec);
+    const nameMatchesSearch = loc !== '' && normalize(clinic.name).includes(loc);
     const matchesAnimalType =
       userPetTypes.length === 0 ||
+      nameMatchesSearch ||
       userPetTypes.some((petType) => clinic.animalTypes.includes(petType));
 
     return matchesLocation && matchesSpecialty && matchesAnimalType;

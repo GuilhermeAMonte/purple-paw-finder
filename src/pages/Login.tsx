@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,15 +8,20 @@ import { Eye, EyeOff, PawPrint, ArrowLeft, Shield, Sparkles, Heart } from 'lucid
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { loginSchema } from '@/schemas/auth.schemas';
+import HCaptchaWidget from '@/components/HCaptchaWidget';
+import type HCaptcha from '@hcaptcha/react-hcaptcha';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const captchaRef = useRef<HCaptcha>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { login } = useAuth();
+  const captchaRequired = !!import.meta.env.VITE_HCAPTCHA_SITE_KEY;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,17 +36,24 @@ const Login = () => {
       return;
     }
 
+    if (captchaRequired && !captchaToken) {
+      toast({ title: 'Complete a verificação de segurança', variant: 'destructive' });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const loggedUser = await login(email, password);
+      const loggedUser = await login(email, password, captchaToken || undefined);
       toast({ title: "Welcome back!", description: "Login successful." });
 
       if (loggedUser?.userType === 'clinic') {
-        navigate(loggedUser.isProfileComplete ? '/clinic-dashboard' : '/clinic-setup');
+        navigate('/clinic-dashboard');
       } else {
         navigate('/');
       }
     } catch (error: any) {
+      captchaRef.current?.resetCaptcha();
+      setCaptchaToken('');
       toast({
         title: "Authentication failed",
         description: error.message || "Invalid credentials. Please try again.",
@@ -175,9 +187,15 @@ const Login = () => {
               </div>
             </div>
 
+            <HCaptchaWidget
+              ref={captchaRef}
+              onVerify={setCaptchaToken}
+              onExpire={() => setCaptchaToken('')}
+            />
+
             <Button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || (captchaRequired && !captchaToken)}
               className="w-full h-11 rounded-xl gradient-purple text-white font-medium hover:opacity-90 smooth-transition shadow-sm hover-glow disabled:opacity-60"
             >
               {isLoading ? (

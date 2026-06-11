@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, MapPin, Shield, Zap, Heart } from 'lucide-react';
+import { Search, MapPin, Shield, Zap, Heart, Building2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { CLINIC_SPECIALTIES } from '@/constants/specialties';
 import { fetchClinics } from '@/lib/clinicSearch';
 
+type Suggestion = { type: 'name'; label: string } | { type: 'location'; label: string };
+
 const SearchSection = () => {
   const [location, setLocation] = useState('');
   const [specialty, setSpecialty] = useState('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [noResults, setNoResults] = useState(false);
 
   const { data: clinics = [] } = useQuery({
     queryKey: ['clinics'],
@@ -22,58 +22,32 @@ const SearchSection = () => {
   const normalize = (str: string) =>
     str.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-  const allLocations = Array.from(new Set(
-    clinics.flatMap((c: any) => [
-      c.neighborhood && c.city && c.state ? `${c.neighborhood} - ${c.city}, ${c.state}` : '',
-      c.city && c.state ? `${c.city} - ${c.state}` : '',
-      c.city ? c.city : '',
-      c.state ? c.state : '',
-      c.neighborhood ? c.neighborhood : '',
-    ]).filter((v): v is string => typeof v === 'string' && v.length > 0)
-  ));
+  const suggestions = useMemo<Suggestion[]>(() => {
+    if (!location.trim()) return [];
+    const term = normalize(location);
 
-  const matchLocation = (searchTerm: string, clinic: any) => {
-    const searchNorm = normalize(searchTerm);
-    const clinicFull = normalize(
-      [clinic.neighborhood, clinic.city, clinic.state].filter(Boolean).join(' ')
+    const byName = clinics.filter((c: any) => normalize(c.name).includes(term));
+    const byLocation = clinics.filter((c: any) =>
+      normalize([c.neighborhood, c.city, c.state].filter(Boolean).join(' ')).includes(term)
     );
-    return clinicFull.includes(searchNorm);
-  };
 
-  useEffect(() => {
-    if (!location.trim()) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      setNoResults(false);
-      return;
-    }
+    const nameSuggestions: Suggestion[] = Array.from(
+      new Map(byName.map((c: any) => [c.name, c])).values()
+    ).map((c: any) => ({ type: 'name' as const, label: c.name }));
 
-    const matchingClinics = clinics.filter(clinic => matchLocation(location, clinic));
-
-    if (matchingClinics.length === 0) {
-      const generic = allLocations.filter(loc =>
-        normalize(loc).includes(normalize(location))
-      );
-      setSuggestions(generic);
-      setShowSuggestions(generic.length > 0);
-      setNoResults(true);
-      return;
-    }
-
-    const clinicSuggestions = Array.from(new Set(
-      matchingClinics.flatMap(c => [
+    const locationLabels = Array.from(new Set(
+      byLocation.flatMap((c: any) => [
         c.neighborhood && c.city && c.state ? `${c.neighborhood} - ${c.city}, ${c.state}` : '',
         c.city && c.state ? `${c.city} - ${c.state}` : '',
         c.city ? c.city : '',
         c.state ? c.state : '',
-        c.neighborhood ? c.neighborhood : ''
-      ]).filter(v => v)
+        c.neighborhood ? c.neighborhood : '',
+      ]).filter(Boolean)
     ));
+    const locationSuggestions: Suggestion[] = locationLabels.map(label => ({ type: 'location' as const, label }));
 
-    setSuggestions(clinicSuggestions);
-    setShowSuggestions(clinicSuggestions.length > 0);
-    setNoResults(false);
-  }, [location]);
+    return [...nameSuggestions, ...locationSuggestions];
+  }, [location, clinics]);
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -155,7 +129,7 @@ const SearchSection = () => {
                 placeholder="Neighborhood, city or state"
                 value={location}
                 onChange={e => setLocation(e.target.value)}
-                onFocus={() => setShowSuggestions(suggestions.length > 0)}
+                onFocus={() => setShowSuggestions(true)}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                 autoComplete="off"
                 className="pl-11 h-12 rounded-xl border-transparent bg-background/70 focus:bg-background text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 smooth-transition placeholder:text-muted-foreground/60"
@@ -164,20 +138,17 @@ const SearchSection = () => {
                 <ul className="absolute left-0 right-0 top-full mt-1.5 bg-popover border border-border/50 rounded-xl shadow-xl z-20 max-h-52 overflow-auto text-left divide-y divide-border/30 animate-fade-in-down">
                   {suggestions.map((s, idx) => (
                     <li
-                      key={s + idx}
+                      key={s.label + idx}
                       className="px-4 py-2.5 text-sm cursor-pointer hover:bg-primary/5 smooth-transition first:rounded-t-xl last:rounded-b-xl flex items-center gap-2"
-                      onMouseDown={() => { setLocation(s); setShowSuggestions(false); }}
+                      onMouseDown={() => { setLocation(s.label); setShowSuggestions(false); }}
                     >
-                      <MapPin className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                      {s}
+                      {s.type === 'name'
+                        ? <Building2 className="w-3.5 h-3.5 text-primary/70 flex-shrink-0" />
+                        : <MapPin className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />}
+                      {s.label}
                     </li>
                   ))}
                 </ul>
-              )}
-              {!showSuggestions && noResults && (
-                <p className="absolute left-0 top-full mt-1.5 text-xs text-muted-foreground px-2">
-                  No clinics found in this region
-                </p>
               )}
             </div>
 

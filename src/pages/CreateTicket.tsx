@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Upload, X, Calendar } from 'lucide-react';
+import { ArrowLeft, Upload, X, Calendar, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +14,7 @@ import BreedSelector from '@/components/BreedSelector';
 import { supabase } from '@/lib/supabase';
 import { getClinic } from '@/lib/clinics';
 import { createTicket } from '@/lib/tickets';
+import { validateReferralFile } from '@/utils/fileValidation';
 
 interface Pet {
   id: string;
@@ -38,6 +39,8 @@ const CreateTicket = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
+
+  const isEmergency = new URLSearchParams(location.search).get('emergency') === 'true';
 
   const [pets, setPets] = useState<Pet[]>([]);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
@@ -87,6 +90,25 @@ const CreateTicket = () => {
     }
   }, [location.search, pets]);
 
+  /* Emergency mode: auto-fill service, date, time */
+  useEffect(() => {
+    if (!isEmergency) return;
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    // Round up to next 30-min slot
+    const minutes = now.getMinutes();
+    const roundedMinutes = minutes < 30 ? 30 : 0;
+    const roundedHours = minutes < 30 ? now.getHours() : now.getHours() + 1;
+    const emergencyTime = `${String(roundedHours % 24).padStart(2, '0')}:${String(roundedMinutes).padStart(2, '0')}`;
+    setFormData(prev => ({
+      ...prev,
+      service: 'Emergência',
+      title: 'Atendimento emergencial',
+      scheduledDate: today,
+      scheduledTime: AVAILABLE_TIMES.includes(emergencyTime) ? emergencyTime : AVAILABLE_TIMES[0],
+    }));
+  }, [isEmergency]);
+
   const handlePetSelection = (petId: string) => {
     if (petId === 'manual') { setSelectedPet(null); return; }
     const pet = pets.find(p => p.id === petId) ?? null;
@@ -119,13 +141,28 @@ const CreateTicket = () => {
       toast({ title: 'Informações do pet', description: 'Nome e espécie do pet são obrigatórios.', variant: 'destructive' });
       return;
     }
-    if (formData.service !== 'Clínica Geral' && !file) {
+    if (!isEmergency && formData.service !== 'Clínica Geral' && !file) {
       toast({ title: 'Encaminhamento necessário', description: 'Anexe o encaminhamento do clínico geral.', variant: 'destructive' });
       return;
     }
 
     setSubmitting(true);
     try {
+      let referralPath: string | null = null;
+      if (file) {
+        const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+        const path = `${user!.id}/${crypto.randomUUID()}${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('referrals')
+          .upload(path, file, { upsert: false });
+        if (uploadError) {
+          toast({ title: 'Erro no upload', description: 'Não foi possível enviar o encaminhamento.', variant: 'destructive' });
+          setSubmitting(false);
+          return;
+        }
+        referralPath = path;
+      }
+
       const ticket = await createTicket({
         user_id: user!.id,
         clinic_id: clinicId!,
@@ -138,10 +175,17 @@ const CreateTicket = () => {
         description: formData.description,
         scheduled_date: formData.scheduledDate,
         scheduled_time: formData.scheduledTime,
+        referral_file_url: referralPath,
+        is_emergency: isEmergency,
       });
 
-      toast({ title: 'Chamado enviado!', description: 'Aguarde a aprovação da clínica.' });
-      navigate(`/chat/${ticket.id}`);
+      if (isEmergency) {
+        toast({ title: '🚨 Chamado emergencial enviado!', description: 'A clínica será notificada imediatamente.' });
+        navigate(`/chat/${ticket.id}?emergency=true`);
+      } else {
+        toast({ title: 'Chamado enviado!', description: 'Aguarde a aprovação da clínica.' });
+        navigate(`/ticket/${ticket.id}/confirmation`, { state: { ticket } });
+      }
     } catch {
       toast({ title: 'Erro', description: 'Não foi possível enviar o chamado.', variant: 'destructive' });
     } finally {
@@ -149,7 +193,7 @@ const CreateTicket = () => {
     }
   };
 
-  const needsReferral = formData.service && formData.service !== 'Clínica Geral';
+  const needsReferral = !isEmergency && formData.service && formData.service !== 'Clínica Geral';
 
   return (
     <div className="min-h-screen bg-background">
@@ -160,8 +204,20 @@ const CreateTicket = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />Voltar
           </Button>
 
+          {isEmergency && (
+            <div className="mb-6 flex items-start gap-3 bg-red-50 border border-red-200 text-red-800 rounded-2xl p-4">
+              <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0 text-red-600" />
+              <div>
+                <p className="font-semibold text-sm">Atendimento Emergencial</p>
+                <p className="text-sm mt-0.5 text-red-700">O chamado será enviado como urgência. Informe seu pet e descreva a situação brevemente — a clínica responderá o mais rápido possível.</p>
+              </div>
+            </div>
+          )}
+
           <div className="bg-card rounded-3xl p-8 border border-border/40 shadow-depth-sm mb-6">
-            <h1 className="text-3xl font-semibold text-foreground mb-1">Abrir Chamado</h1>
+            <h1 className="text-3xl font-semibold text-foreground mb-1">
+              {isEmergency ? '🚨 Chamado Emergencial' : 'Abrir Chamado'}
+            </h1>
             <p className="text-muted-foreground">Solicite atendimento para {clinicName}</p>
           </div>
 
@@ -196,19 +252,21 @@ const CreateTicket = () => {
               </div>
 
               {/* Tipo de atendimento */}
-              <div className="space-y-1.5">
-                <Label className="text-base font-medium">Tipo de Atendimento *</Label>
-                <Select value={formData.service} onValueChange={v => setFormData(p => ({ ...p, service: v }))}>
-                  <SelectTrigger className="h-12 rounded-xl border-border/50">
-                    <SelectValue placeholder="Selecione o tipo de atendimento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(clinicServices.length > 0 ? clinicServices : ['Clínica Geral']).map(s => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!isEmergency && (
+                <div className="space-y-1.5">
+                  <Label className="text-base font-medium">Tipo de Atendimento *</Label>
+                  <Select value={formData.service} onValueChange={v => setFormData(p => ({ ...p, service: v }))}>
+                    <SelectTrigger className="h-12 rounded-xl border-border/50">
+                      <SelectValue placeholder="Selecione o tipo de atendimento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(clinicServices.length > 0 ? clinicServices : ['Clínica Geral']).map(s => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {formData.service && (
                 <>
@@ -319,7 +377,17 @@ const CreateTicket = () => {
                             <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
                             <p className="text-sm text-muted-foreground mb-3">Clique para selecionar ou arraste aqui</p>
                             <input type="file" id="file-upload" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                              className="hidden" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+                              className="hidden" onChange={async e => {
+                                const picked = e.target.files?.[0] ?? null;
+                                if (!picked) return;
+                                const err = await validateReferralFile(picked);
+                                if (err) {
+                                  toast({ title: 'Arquivo inválido', description: err, variant: 'destructive' });
+                                  e.target.value = '';
+                                  return;
+                                }
+                                setFile(picked);
+                              }} />
                             <Label htmlFor="file-upload"
                               className="inline-flex items-center px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm cursor-pointer hover:bg-primary/90 smooth-transition">
                               Selecionar Arquivo
@@ -346,8 +414,9 @@ const CreateTicket = () => {
                     <Button type="button" variant="outline" onClick={() => navigate(-1)} className="flex-1 h-12 rounded-xl">
                       Cancelar
                     </Button>
-                    <Button type="submit" disabled={submitting} className="flex-1 h-12 rounded-xl gradient-purple text-white hover:opacity-90">
-                      {submitting ? 'Enviando…' : 'Enviar Chamado'}
+                    <Button type="submit" disabled={submitting}
+                      className={`flex-1 h-12 rounded-xl text-white hover:opacity-90 ${isEmergency ? 'bg-red-600 hover:bg-red-700' : 'gradient-purple'}`}>
+                      {submitting ? 'Enviando…' : isEmergency ? '🚨 Enviar Emergência' : 'Enviar Chamado'}
                     </Button>
                   </div>
                 </>

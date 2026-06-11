@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import ClinicCard from './ClinicCard';
@@ -6,6 +6,7 @@ import LocationPermissionDialog from './LocationPermissionDialog';
 import { useGeolocation, calculateDistance } from '@/hooks/use-geolocation';
 import { fetchClinics, filterAndSortClinics } from '@/lib/clinicSearch';
 import { Search, SlidersHorizontal, MapPin, X } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 const SkeletonCard = () => (
   <div className="bg-card rounded-2xl border border-border/40 overflow-hidden shadow-depth-sm">
@@ -29,7 +30,9 @@ const SkeletonCard = () => (
 const FeaturedClinics = () => {
   const { user } = useAuth();
   const [showLocationDialog, setShowLocationDialog] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [hasSearched, setHasSearched] = useState(
+    () => !!(localStorage.getItem('search_location') || localStorage.getItem('search_specialty'))
+  );
   const [searchParams, setSearchParams] = useState({
     location: localStorage.getItem('search_location') || '',
     specialty: localStorage.getItem('search_specialty') || '',
@@ -72,12 +75,20 @@ const FeaturedClinics = () => {
     setShowLocationDialog(false);
   };
 
-  const userPets = user?.id
-    ? JSON.parse(localStorage.getItem(`pets_${user.id}`) || '[]')
-    : [];
-  const userPetTypes = user?.userType === 'client'
-    ? userPets.map((pet: { species: string }) => pet.species)
-    : [];
+  const [userPetTypes, setUserPetTypes] = useState<string[]>([]);
+  const petsFetched = useRef(false);
+
+  useEffect(() => {
+    if (!user?.id || user.userType !== 'client' || petsFetched.current) return;
+    petsFetched.current = true;
+    supabase
+      .from('pets')
+      .select('species')
+      .eq('owner_id', user.id)
+      .then(({ data }) => {
+        if (data) setUserPetTypes(data.map((p: { species: string }) => p.species));
+      });
+  }, [user?.id, user?.userType]);
 
   const filteredClinics = filterAndSortClinics(clinics, {
     location: searchParams.location,

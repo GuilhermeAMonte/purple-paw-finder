@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,7 @@ import {
   sendMessage as sendTicketMessage,
   type Ticket,
 } from '@/lib/tickets';
+import { supabase } from '@/lib/supabase';
 
 const SPECIALTIES = [
   'General Practice','Surgery','Cardiology','Dermatology','Ophthalmology',
@@ -125,7 +126,8 @@ const ClinicDashboard = () => {
 
   /* Tickets from Supabase */
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [loadingTickets, setLoadingTickets] = useState(false);
+  const [loadingTickets, setLoadingTickets] = useState(true);
+  const firstLoad = useRef(true);
 
   /* Selected ticket for contacts panel */
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -165,7 +167,8 @@ const ClinicDashboard = () => {
     try {
       const data = await fetchClinicTickets(clinicId);
       setTickets(data);
-      if (!selectedTicket && data.length > 0) setSelectedTicket(data[0]);
+      if (firstLoad.current && data.length > 0) setSelectedTicket(data[0]);
+      firstLoad.current = false;
     } catch {
       // silently ignore
     } finally {
@@ -174,6 +177,41 @@ const ClinicDashboard = () => {
   }, [clinicId]);
 
   useEffect(() => { loadTickets(); }, [loadTickets]);
+
+  /* ── Realtime subscription for new/updated tickets ─────────────── */
+  useEffect(() => {
+    if (!clinicId) return;
+    const db = supabase as any;
+    const channel = db
+      .channel(`tickets-clinic-${clinicId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'tickets',
+        filter: `clinic_id=eq.${clinicId}`,
+      }, async (payload: any) => {
+        const { data } = await db
+          .from('tickets')
+          .select('*, profiles(name)')
+          .eq('id', payload.new.id)
+          .single();
+        if (data) {
+          const ticket: Ticket = { ...data, client_name: data.profiles?.name ?? null };
+          setTickets(prev => [ticket, ...prev]);
+          toast({ title: 'Novo chamado recebido!', description: `${ticket.client_name ?? 'Cliente'} · ${ticket.service}` });
+        }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'tickets',
+        filter: `clinic_id=eq.${clinicId}`,
+      }, (payload: any) => {
+        setTickets(prev => prev.map(t => t.id === payload.new.id ? { ...t, ...payload.new } : t));
+      })
+      .subscribe();
+    return () => { db.removeChannel(channel); };
+  }, [clinicId]);
 
   /* ── Load calendar month appointments ──────────────────────────── */
   const loadMonthAppts = useCallback(async () => {
@@ -200,10 +238,45 @@ const ClinicDashboard = () => {
 
   /* ── Derived ───────────────────────────────────────────────────── */
   const pendingTickets  = tickets.filter(t => t.approval_status === 'pending');
-  const apptDates       = new Set(monthAppts.map(a => a.date));
   const todayStr        = format(new Date(), 'yyyy-MM-dd');
-  const todayAppts      = monthAppts.filter(a => a.date === todayStr);
-  const scheduleAppts   = monthAppts.filter(a => a.date === scheduleDate);
+
+  /* Tickets aprovados entram na agenda como consultas (sem duplicar os
+     que já viraram agendamento com veterinário via VetScheduleDialog). */
+  const ticketAppts: (VetAppointment & { vet_name: string })[] = tickets
+    .filter(t => t.approval_status === 'approved' && t.scheduled_date && t.scheduled_time)
+    .map(t => ({
+      id: `ticket-${t.id}`,
+      vet_id: '',
+      clinic_id: t.clinic_id,
+      ticket_id: t.id,
+      date: t.scheduled_date,
+      time: t.scheduled_time.slice(0, 5),
+      status: 'booked' as const,
+      patient_name: t.client_name ?? 'Cliente',
+      patient_pet: `${t.pet_name} (${t.pet_species})`,
+      patient_notes: t.description,
+      created_at: t.created_at,
+      vet_name: t.service,
+    }));
+
+  const monthTicketAppts = ticketAppts.filter(a => {
+    const d = parseISO(a.date);
+    return d.getFullYear() === calYear && d.getMonth() + 1 === calMonth
+      && !monthAppts.some(m => m.ticket_id === a.ticket_id);
+  });
+  const allMonthAppts   = [...monthAppts, ...monthTicketAppts];
+
+  const apptDates       = new Set(allMonthAppts.map(a => a.date));
+  const todayAppts      = allMonthAppts.filter(a => a.date === todayStr)
+    .sort((a, b) => a.time.localeCompare(b.time));
+  const scheduleAppts   = allMonthAppts.filter(a => a.date === scheduleDate);
+
+  const calDateStr  = calDate ? format(calDate, 'yyyy-MM-dd') : null;
+  const calDayAppts = [
+    ...dayAppts,
+    ...ticketAppts.filter(a => a.date === calDateStr && !dayAppts.some(d => d.ticket_id === a.ticket_id)),
+  ].sort((a, b) => a.time.localeCompare(b.time));
+
   const emergencyTickets = tickets.filter(t => t.is_emergency);
   const regularTickets  = tickets.filter(t => !t.is_emergency);
 
@@ -259,7 +332,7 @@ const ClinicDashboard = () => {
   ];
 
   const kpis = [
-    { icon: BarChart2,   label: 'Consultas no mês',    value: monthAppts.length,       color: 'bg-violet-100 text-violet-600' },
+    { icon: BarChart2,   label: 'Consultas no mês',    value: allMonthAppts.length,    color: 'bg-violet-100 text-violet-600' },
     { icon: CheckSquare, label: 'Pendentes de aprovação', value: pendingTickets.length, color: 'bg-amber-100 text-amber-600' },
     { icon: Users,       label: 'Pacientes hoje',       value: todayAppts.length,       color: 'bg-blue-100 text-blue-600' },
     { icon: Activity,    label: 'Chamados abertos',     value: tickets.filter(t => t.status !== 'cancelled').length, color: 'bg-emerald-100 text-emerald-600' },
@@ -476,7 +549,16 @@ const ClinicDashboard = () => {
 
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
-          {kpis.map(k => <KpiCard key={k.label} {...k} />)}
+          {loadingTickets && firstLoad.current
+            ? [0,1,2,3].map(i => (
+                <div key={i} className="kpi-card">
+                  <div className="w-10 h-10 skeleton rounded-xl mb-4" />
+                  <div className="h-7 w-12 skeleton rounded-lg mb-2" />
+                  <div className="h-4 w-28 skeleton rounded-md" />
+                </div>
+              ))
+            : kpis.map(k => <KpiCard key={k.label} {...k} />)
+          }
         </div>
 
         {/* Nav tabs */}
@@ -510,7 +592,10 @@ const ClinicDashboard = () => {
               </div>
             </div>
             <div className="p-6">
-              <AppointmentApproval appointments={pendingTickets} onApprove={handleApprove} onReject={handleReject} />
+              {loadingTickets
+                ? <div className="space-y-4">{[0,1,2].map(i => <div key={i} className="h-40 skeleton rounded-2xl" />)}</div>
+                : <AppointmentApproval appointments={pendingTickets} onApprove={handleApprove} onReject={handleReject} />
+              }
             </div>
           </div>
         )}
@@ -531,7 +616,7 @@ const ClinicDashboard = () => {
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground">Calendário</h3>
-                  <p className="text-xs text-muted-foreground">{monthAppts.length} consulta(s) no mês</p>
+                  <p className="text-xs text-muted-foreground">{allMonthAppts.length} consulta(s) no mês</p>
                 </div>
               </div>
               <div className="flex justify-center p-6">
@@ -554,16 +639,16 @@ const ClinicDashboard = () => {
                   <h3 className="font-semibold text-foreground">
                     {calDate ? format(calDate, "d 'de' MMMM yyyy", { locale: ptBR }) : 'Selecione uma data'}
                   </h3>
-                  <p className="text-xs text-muted-foreground">{dayAppts.length} consulta(s)</p>
+                  <p className="text-xs text-muted-foreground">{calDayAppts.length} consulta(s)</p>
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                {calDate ? dayAppts.length === 0 ? (
+                {calDate ? calDayAppts.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground/60">
                     <Calendar className="w-10 h-10 mb-2" />
                     <p className="text-sm">Nenhuma consulta neste dia</p>
                   </div>
-                ) : dayAppts.map(appt => (
+                ) : calDayAppts.map(appt => (
                   <button key={appt.id} onClick={() => { setDetailAppt(appt); setDetailOpen(true); }}
                     className="w-full text-left border border-border/50 rounded-xl p-4 hover:border-primary/35 hover:bg-primary/3 smooth-transition group">
                     <div className="flex items-center justify-between mb-2">

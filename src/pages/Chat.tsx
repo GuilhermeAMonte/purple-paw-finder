@@ -148,7 +148,7 @@ const Chat = () => {
       }}>
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="text-white hover:bg-white/20">
+            <Button variant="ghost" size="icon" onClick={() => navigate(user?.userType === 'clinic' ? '/clinic-dashboard' : '/my-appointments')} className="text-white hover:bg-white/20">
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <Avatar className="w-11 h-11 border-2 border-white/60">

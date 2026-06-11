@@ -14,13 +14,14 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<User | null>;
+  login: (email: string, password: string, captchaToken?: string) => Promise<User | null>;
   register: (
     name: string,
     email: string,
     password: string,
     userType: UserType,
     plan?: PlanType,
+    captchaToken?: string,
   ) => Promise<User | null>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -118,6 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password: string,
     userType: UserType,
     plan?: PlanType,
+    captchaToken?: string,
   ): Promise<User | null> => {
     // name/user_type/plan vão em metadata; o trigger handle_new_user() cria
     // as linhas em profiles (e clinics, se for clínica).
@@ -125,7 +127,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email,
       password,
       options: {
-        data: { name, user_type: userType, plan: userType === 'clinic' ? plan : undefined },
+        captchaToken,
+        data: {
+          name,
+          user_type: userType,
+          plan: userType === 'clinic' ? plan : undefined,
+          consent_at: new Date().toISOString(),
+          consent_version: '1.0',
+        },
       },
     });
 
@@ -144,8 +153,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   }, []);
 
-  const login = useCallback(async (email: string, password: string): Promise<User | null> => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const login = useCallback(async (email: string, password: string, captchaToken?: string): Promise<User | null> => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } });
     if (error || !data.session) {
       // Mensagem genérica — não revela se é e-mail ou senha (Req 2.2).
       throw new Error('E-mail ou senha incorretos');

@@ -22,6 +22,10 @@ import ClinicVisualSetup from "./pages/ClinicVisualSetup";
 import ClinicDashboard from "./pages/ClinicDashboard";
 import NotFound from "./pages/NotFound";
 import ForgotPassword from "./pages/ForgotPassword";
+import TicketConfirmation from "./pages/TicketConfirmation";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfUse from "./pages/TermsOfUse";
+import DPOContact from "./pages/DPOContact";
 
 const queryClient = new QueryClient();
 
@@ -46,7 +50,8 @@ const App = () => (
 
               {/* Exclusivas de Cliente */}
               <Route path="/clinic/:id/create-ticket" element={<ClientRoute><CreateTicket /></ClientRoute>} />
-              <Route path="/chat/:ticketId" element={<ClientRoute><Chat /></ClientRoute>} />
+              <Route path="/chat/:ticketId" element={<PrivateRoute><Chat /></PrivateRoute>} />
+              <Route path="/ticket/:ticketId/confirmation" element={<ClientRoute><TicketConfirmation /></ClientRoute>} />
               <Route path="/profile" element={<ClientRoute><Profile /></ClientRoute>} />
               <Route path="/my-appointments" element={<ClientRoute><MyAppointments /></ClientRoute>} />
 
@@ -54,6 +59,10 @@ const App = () => (
               <Route path="/clinic-setup" element={<ClinicRoute><ClinicSetup /></ClinicRoute>} />
               <Route path="/clinic-visual-setup" element={<ClinicRoute><ClinicVisualSetup /></ClinicRoute>} />
               <Route path="/clinic-dashboard" element={<ClinicRoute><ClinicDashboard /></ClinicRoute>} />
+              {/* Páginas legais */}
+              <Route path="/privacidade" element={<PrivacyPolicy />} />
+              <Route path="/termos" element={<TermsOfUse />} />
+              <Route path="/dpo" element={<DPOContact />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
