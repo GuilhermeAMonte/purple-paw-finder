@@ -11,29 +11,41 @@ import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import BreedSelector from '@/components/BreedSelector';
-import { breedsBySpecies } from '@/data/breeds';
-import { getTickets, saveTicket } from '../utils/ticketStorage';
+import { supabase } from '@/lib/supabase';
+import { getClinic } from '@/lib/clinics';
+import { createTicket } from '@/lib/tickets';
 
 interface Pet {
   id: string;
   name: string;
   species: string;
   breed: string;
-  age: string;
-  weight: string;
-  color: string;
-  notes: string;
 }
 
+const AVAILABLE_TIMES = [
+  '08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30',
+  '13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30',
+];
+
+const SPECIES_LABELS: Record<string, string> = {
+  dog: 'Cachorro', cat: 'Gato', bird: 'Pássaro', rabbit: 'Coelho',
+  hamster: 'Hamster', fish: 'Peixe', reptile: 'Réptil', other: 'Outro',
+};
+
 const CreateTicket = () => {
-  const { id } = useParams();
+  const { id: clinicId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
-  
+
   const [pets, setPets] = useState<Pet[]>([]);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
-  
+  const [clinicName, setClinicName] = useState('Clínica');
+  const [clinicServices, setClinicServices] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+
   const [formData, setFormData] = useState({
     service: '',
     title: '',
@@ -41,247 +53,124 @@ const CreateTicket = () => {
     petName: '',
     petSpecies: '',
     petBreed: '',
-    petAge: '',
-    petWeight: '',
-    petColor: '',
-    petNotes: '',
     scheduledDate: '',
-    scheduledTime: ''
+    scheduledTime: '',
   });
 
-
-  
-
-  const [file, setFile] = useState<File | null>(null);
-  const [availableTimes] = useState([
-    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-    '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
-  ]);
-
-  // Seleciona automaticamente o pet recém-cadastrado se vier de /profile
-  const location = useLocation();
+  /* Load clinic */
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const selectedPetId = params.get('selectedPet');
-    if (selectedPetId && pets.length > 0) {
-      handlePetSelection(selectedPetId);
-    }
-    // eslint-disable-next-line
-  }, [location.search, pets]);
+    if (!clinicId) return;
+    getClinic(clinicId).then(clinic => {
+      if (clinic) {
+        setClinicName(clinic.clinic_name ?? 'Clínica');
+        setClinicServices(clinic.specialties ?? []);
+      }
+    });
+  }, [clinicId]);
 
-  // Mock data da clínica
-  const clinic = {
-    name: "Clínica Veterinária Pet Care",
-    services: ["Clínica Geral", "Cirurgia", "Dermatologia", "Radiologia", "Cardiologia"]
-  };
-
-  // Carregar pets do usuário
+  /* Load pets from Supabase */
   useEffect(() => {
-    if (user?.id) {
-      const userPets = JSON.parse(localStorage.getItem(`pets_${user.id}`) || '[]');
-      setPets(userPets);
-    }
+    if (!user?.id) return;
+    supabase
+      .from('pets')
+      .select('id, name, species, breed')
+      .eq('owner_id', user.id)
+      .then(({ data }) => setPets((data ?? []) as Pet[]));
   }, [user]);
 
-  // Pré-preencher dados quando um pet é selecionado
-  const handlePetSelection = (petId: string) => {
-    if (petId === "manual") {
-      setSelectedPet(null);
-      setFormData(prev => ({
-        ...prev,
-        petName: '',
-        petSpecies: '',
-        petBreed: '',
-        petAge: '',
-        petWeight: '',
-        petColor: '',
-        petNotes: ''
-      }));
-      return;
+  /* Auto-select pet from query param */
+  useEffect(() => {
+    const petId = new URLSearchParams(location.search).get('selectedPet');
+    if (petId && pets.length > 0) {
+      const pet = pets.find(p => p.id === petId);
+      if (pet) handlePetSelection(pet.id);
     }
-    
-    const pet = pets.find(p => p.id === petId);
+  }, [location.search, pets]);
+
+  const handlePetSelection = (petId: string) => {
+    if (petId === 'manual') { setSelectedPet(null); return; }
+    const pet = pets.find(p => p.id === petId) ?? null;
+    setSelectedPet(pet);
     if (pet) {
-      setSelectedPet(pet);
       setFormData(prev => ({
         ...prev,
         petName: pet.name,
-        petSpecies: pet.species === 'dog' ? 'Cachorro' : pet.species === 'cat' ? 'Gato' : pet.species,
+        petSpecies: pet.species,
         petBreed: pet.breed,
-        petAge: pet.age,
-        petWeight: pet.weight,
-        petColor: pet.color,
-        petNotes: pet.notes
-      }));
-    } else {
-      setSelectedPet(null);
-      setFormData(prev => ({
-        ...prev,
-        petName: '',
-        petSpecies: '',
-        petBreed: '',
-        petAge: '',
-        petWeight: '',
-        petColor: '',
-        petNotes: ''
       }));
     }
   };
 
-  // Função para converter peso para kg
-  const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let weight = e.target.value;
-    // Remove caracteres não numéricos exceto vírgula e ponto
-    weight = weight.replace(/[^\d.,]/g, '');
-    
-    // Se contém apenas números, adiciona kg automaticamente
-    if (weight && !weight.includes('kg') && !weight.includes('g')) {
-      const numericValue = parseFloat(weight.replace(',', '.'));
-      if (!isNaN(numericValue)) {
-        weight = numericValue + 'kg';
-      }
-    }
-    
-    setFormData(prev => ({
-      ...prev,
-      petWeight: weight
-    }));
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0] || null;
-    setFile(selectedFile);
-  };
-
-  const removeFile = () => {
-    setFile(null);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.service || !formData.title || !formData.description) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos obrigatórios.",
-        variant: "destructive",
-      });
+      toast({ title: 'Campos obrigatórios', description: 'Preencha todos os campos marcados com *.', variant: 'destructive' });
       return;
     }
-
     if (!formData.scheduledDate || !formData.scheduledTime) {
-      toast({
-        title: "Erro",
-        description: "Por favor, selecione data e horário.",
-        variant: "destructive",
-      });
+      toast({ title: 'Data e horário', description: 'Selecione data e horário da consulta.', variant: 'destructive' });
+      return;
+    }
+    const petName = selectedPet?.name ?? formData.petName;
+    const petSpecies = selectedPet?.species ?? formData.petSpecies;
+    const petBreed  = selectedPet?.breed  ?? formData.petBreed;
+    if (!petName || !petSpecies) {
+      toast({ title: 'Informações do pet', description: 'Nome e espécie do pet são obrigatórios.', variant: 'destructive' });
+      return;
+    }
+    if (formData.service !== 'Clínica Geral' && !file) {
+      toast({ title: 'Encaminhamento necessário', description: 'Anexe o encaminhamento do clínico geral.', variant: 'destructive' });
       return;
     }
 
-    if (!selectedPet && (!formData.petName || !formData.petSpecies)) {
-      toast({
-        title: "Erro",
-        description: "Informações do pet são obrigatórias",
-        variant: "destructive",
+    setSubmitting(true);
+    try {
+      const ticket = await createTicket({
+        user_id: user!.id,
+        clinic_id: clinicId!,
+        pet_id: selectedPet?.id,
+        pet_name: petName,
+        pet_species: petSpecies,
+        pet_breed: petBreed,
+        service: formData.service,
+        title: formData.title,
+        description: formData.description,
+        scheduled_date: formData.scheduledDate,
+        scheduled_time: formData.scheduledTime,
       });
-      return;
+
+      toast({ title: 'Chamado enviado!', description: 'Aguarde a aprovação da clínica.' });
+      navigate(`/chat/${ticket.id}`);
+    } catch {
+      toast({ title: 'Erro', description: 'Não foi possível enviar o chamado.', variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
     }
-
-
-
-    if (formData.service !== "Clínica Geral" && !file) {
-      toast({
-        title: "Erro", 
-        description: "Para serviços especializados é necessário anexar o encaminhamento do clínico geral.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const ticketId = Date.now().toString();
-
-    const ticketData = {
-      id: ticketId,
-      clinicId: id,
-      clinicName: clinic.name,
-      userId: user?.id,
-      userName: user?.name,
-      service: formData.service,
-      title: formData.title,
-      description: formData.description,
-      petInfo: selectedPet || {
-        name: formData.petName,
-        species: formData.petSpecies,
-        breed: formData.petBreed,
-        age: formData.petAge,
-        weight: formData.petWeight,
-        color: formData.petColor,
-        notes: formData.petNotes
-      },
-      scheduledDate: formData.scheduledDate,
-      scheduledTime: formData.scheduledTime,
-      createdAt: new Date().toISOString(),
-      status: 'pending_approval',
-      approvalStatus: 'pending'
-    };
-
-    const tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
-    tickets.push(ticketData);
-    localStorage.setItem('tickets', JSON.stringify(tickets));
-
-    toast({
-      title: "Agendamento solicitado!",
-      description: "Aguarde a aprovação da clínica.",
-    });
-
-    navigate('/');
   };
 
-  const needsReferral = formData.service && formData.service !== "Clínica Geral";
+  const needsReferral = formData.service && formData.service !== 'Clínica Geral';
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
       <main className="pt-20">
         <div className="max-w-4xl mx-auto px-6 py-8">
-          {/* Header */}
-          <div className="mb-8">
-            <Button
-              variant="ghost"
-              onClick={() => navigate(-1)}
-              className="mb-6 -ml-2"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </Button>
+          <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6 -ml-2">
+            <ArrowLeft className="w-4 h-4 mr-2" />Voltar
+          </Button>
 
-            <div className="bg-card rounded-3xl p-8 apple-shadow border border-border/40">
-              <h1 className="text-3xl font-semibold text-foreground mb-2">
-                Abrir Chamado
-              </h1>
-              <p className="text-muted-foreground">
-                Solicite atendimento para {clinic.name}
-              </p>
-            </div>
+          <div className="bg-card rounded-3xl p-8 border border-border/40 shadow-depth-sm mb-6">
+            <h1 className="text-3xl font-semibold text-foreground mb-1">Abrir Chamado</h1>
+            <p className="text-muted-foreground">Solicite atendimento para {clinicName}</p>
           </div>
 
-          {/* Formulário */}
-          <div className="bg-card rounded-3xl p-8 apple-shadow border border-border/40">
+          <div className="bg-card rounded-3xl p-8 border border-border/40 shadow-depth-sm">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Seleção de Pet */}
-              <div>
-                <Label htmlFor="pet-select" className="text-base font-medium text-foreground mb-3 block">
-                  Selecionar Pet
-                </Label>
+
+              {/* Pet */}
+              <div className="space-y-1.5">
+                <Label className="text-base font-medium">Selecionar Pet</Label>
                 <Select onValueChange={handlePetSelection}>
                   <SelectTrigger className="h-12 rounded-xl border-border/50">
                     <SelectValue placeholder="Escolha um pet ou preencha manualmente" />
@@ -290,333 +179,161 @@ const CreateTicket = () => {
                     <SelectItem value="manual">Preencher manualmente</SelectItem>
                     {pets.map(pet => (
                       <SelectItem key={pet.id} value={pet.id}>
-                        {pet.name} - {pet.species === 'dog' ? 'Cachorro' : pet.species === 'cat' ? 'Gato' : pet.species}
+                        {pet.name} — {SPECIES_LABELS[pet.species] ?? pet.species}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {pets.length === 0 && (
-                  <div className="mt-2 flex flex-col gap-2">
-                    <p className="text-sm text-muted-foreground">
-                      Nenhum pet cadastrado.
-                    </p>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="w-fit"
-                      onClick={() => navigate(`/profile?tab=pets&add=1&returnTo=/clinic/${id}/create-ticket`)}
-                    >
+                  <div className="pt-1 space-y-1">
+                    <p className="text-sm text-muted-foreground">Nenhum pet cadastrado.</p>
+                    <Button type="button" variant="secondary" size="sm"
+                      onClick={() => navigate(`/profile?tab=pets&add=1&returnTo=/clinic/${clinicId}/create-ticket`)}>
                       Cadastrar novo pet
                     </Button>
                   </div>
                 )}
               </div>
 
-              {/* Tipo de Atendimento */}
-              <div>
-                <Label htmlFor="service" className="text-base font-medium text-foreground mb-3 block">
-                  Tipo de Atendimento *
-                </Label>
-                <Select value={formData.service} onValueChange={(value) => setFormData(prev => ({ ...prev, service: value }))}>
+              {/* Tipo de atendimento */}
+              <div className="space-y-1.5">
+                <Label className="text-base font-medium">Tipo de Atendimento *</Label>
+                <Select value={formData.service} onValueChange={v => setFormData(p => ({ ...p, service: v }))}>
                   <SelectTrigger className="h-12 rounded-xl border-border/50">
                     <SelectValue placeholder="Selecione o tipo de atendimento" />
                   </SelectTrigger>
                   <SelectContent>
-                    {clinic.services.map((service, index) => (
-                      <SelectItem key={index} value={service}>
-                        {service}
-                      </SelectItem>
+                    {(clinicServices.length > 0 ? clinicServices : ['Clínica Geral']).map(s => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Formulário aparece só após seleção do serviço */}
               {formData.service && (
                 <>
                   {/* Título */}
-                  <div>
-                    <Label htmlFor="title" className="text-base font-medium text-foreground mb-3 block">
-                      Título do Caso *
-                    </Label>
-                    <Input
-                      id="title"
-                      name="title"
-                      value={formData.title}
-                      onChange={handleInputChange}
-                      placeholder="Escreva aqui um título para o problema"
-                      className="h-12 rounded-xl border-border/50"
-                    />
+                  <div className="space-y-1.5">
+                    <Label className="text-base font-medium">Título do Caso *</Label>
+                    <Input value={formData.title}
+                      onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
+                      placeholder="Ex: Consulta de rotina — vacinação anual"
+                      className="h-12 rounded-xl border-border/50" />
                   </div>
 
                   {/* Descrição */}
-                  <div>
-                    <Label htmlFor="description" className="text-base font-medium text-foreground mb-3 block">
-                      Descrição *
-                    </Label>
-                    <Textarea
-                      id="description"
-                      name="description"
-                      value={formData.description}
-                      onChange={handleInputChange}
-                      placeholder="Descreva detalhadamente o que o animal está sentindo, sintomas observados, há quanto tempo começou, etc."
-                      rows={6}
-                      className="rounded-xl border-border/50 resize-none"
-                    />
+                  <div className="space-y-1.5">
+                    <Label className="text-base font-medium">Descrição *</Label>
+                    <Textarea value={formData.description}
+                      onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
+                      placeholder="Descreva sintomas, há quanto tempo começou, comportamentos observados…"
+                      rows={5} className="rounded-xl border-border/50 resize-none" />
                   </div>
 
-                  {/* Agendamento */}
-                  <div className="space-y-4">
-                    <Label className="text-base font-medium text-foreground flex items-center gap-2">
-                      <Calendar className="w-5 h-5" />
-                      Agendar Consulta *
+                  {/* Data e horário */}
+                  <div className="space-y-3">
+                    <Label className="text-base font-medium flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />Agendar Consulta *
                     </Label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="scheduledDate" className="text-sm font-medium text-foreground mb-2 block">
-                          Data
-                        </Label>
-                        <Input
-                          id="scheduledDate"
-                          name="scheduledDate"
-                          type="date"
-                          value={formData.scheduledDate}
-                          onChange={handleInputChange}
+                      <div className="space-y-1.5">
+                        <Label className="text-sm">Data</Label>
+                        <Input type="date" value={formData.scheduledDate}
+                          onChange={e => setFormData(p => ({ ...p, scheduledDate: e.target.value }))}
                           min={new Date().toISOString().split('T')[0]}
-                          className="h-10 rounded-xl border-border/50"
-                          required
-                        />
+                          className="h-10 rounded-xl border-border/50" />
                       </div>
-                      <div>
-                        <Label htmlFor="scheduledTime" className="text-sm font-medium text-foreground mb-2 block">
-                          Horário
-                        </Label>
-                        <Select value={formData.scheduledTime} onValueChange={(value) => setFormData(prev => ({ ...prev, scheduledTime: value }))}>
+                      <div className="space-y-1.5">
+                        <Label className="text-sm">Horário</Label>
+                        <Select value={formData.scheduledTime} onValueChange={v => setFormData(p => ({ ...p, scheduledTime: v }))}>
                           <SelectTrigger className="h-10 rounded-xl border-border/50">
                             <SelectValue placeholder="Selecione o horário" />
                           </SelectTrigger>
                           <SelectContent>
-                            {availableTimes.map((time) => (
-                              <SelectItem key={time} value={time}>{time}</SelectItem>
-                            ))}
+                            {AVAILABLE_TIMES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      A clínica irá revisar e aprovar seu agendamento.
-                    </p>
+                    <p className="text-sm text-muted-foreground">A clínica irá revisar e aprovar seu agendamento.</p>
                   </div>
 
-                  {/* Informações do Pet */}
-                  {!selectedPet ? (
+                  {/* Informações do pet (manual) */}
+                  {!selectedPet && (
                     <div className="space-y-4">
-                      <Label className="text-base font-medium text-foreground">
-                        Informações do Pet *
-                      </Label>
+                      <Label className="text-base font-medium">Informações do Pet *</Label>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="petName" className="text-sm font-medium text-foreground mb-2 block">
-                            Nome do Pet
-                          </Label>
-                          <Input
-                            id="petName"
-                            name="petName"
-                            value={formData.petName}
-                            onChange={handleInputChange}
-                            placeholder="Nome do seu pet"
-                            className="h-10 rounded-xl border-border/50"
-                            required
-                          />
+                        <div className="space-y-1.5">
+                          <Label className="text-sm">Nome</Label>
+                          <Input value={formData.petName}
+                            onChange={e => setFormData(p => ({ ...p, petName: e.target.value }))}
+                            placeholder="Nome do pet" className="h-10 rounded-xl border-border/50" />
                         </div>
-                        <div>
-                          <Label htmlFor="petSpecies" className="text-sm font-medium text-foreground mb-2 block">
-                            Espécie
-                          </Label>
-                          <Select value={formData.petSpecies} onValueChange={(value) => setFormData(prev => ({ ...prev, petSpecies: value, petBreed: '' }))}>
+                        <div className="space-y-1.5">
+                          <Label className="text-sm">Espécie</Label>
+                          <Select value={formData.petSpecies} onValueChange={v => setFormData(p => ({ ...p, petSpecies: v, petBreed: '' }))}>
                             <SelectTrigger className="h-10 rounded-xl border-border/50">
-                              <SelectValue placeholder="Selecione a espécie" />
+                              <SelectValue placeholder="Espécie" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Cachorro">Cachorro</SelectItem>
-                              <SelectItem value="Gato">Gato</SelectItem>
-                              <SelectItem value="Pássaro">Pássaro</SelectItem>
-                              <SelectItem value="Coelho">Coelho</SelectItem>
-                              <SelectItem value="Hamster">Hamster</SelectItem>
-                              <SelectItem value="Peixe">Peixe</SelectItem>
-                              <SelectItem value="Réptil">Réptil</SelectItem>
-                              <SelectItem value="Outro">Outro</SelectItem>
+                              {Object.entries(SPECIES_LABELS).map(([val, label]) => (
+                                <SelectItem key={val} value={val}>{label}</SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                         <div>
-                           <Label htmlFor="petBreed" className="text-sm font-medium text-foreground mb-2 block">
-                             Raça
-                           </Label>
-                           <BreedSelector
-                             species={formData.petSpecies === 'Cachorro' ? 'dog' : formData.petSpecies === 'Gato' ? 'cat' : formData.petSpecies.toLowerCase()}
-                             value={formData.petBreed}
-                             onChange={(value) => setFormData(prev => ({ ...prev, petBreed: value }))}
-                             disabled={!formData.petSpecies}
-                           />
-                         </div>
-                        <div>
-                          <Label htmlFor="petAge" className="text-sm font-medium text-foreground mb-2 block">
-                            Idade
-                          </Label>
-                          <Input
-                            id="petAge"
-                            name="petAge"
-                            value={formData.petAge}
-                            onChange={handleInputChange}
-                            placeholder="Ex: 2 anos"
-                            className="h-10 rounded-xl border-border/50"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="petWeight" className="text-sm font-medium text-foreground mb-2 block">
-                            Peso
-                          </Label>
-                           <Input
-                             id="petWeight"
-                             name="petWeight"
-                             value={formData.petWeight}
-                             onChange={handleWeightChange}
-                             placeholder="Ex: 15"
-                             className="h-10 rounded-xl border-border/50"
-                           />
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="petColor" className="text-sm font-medium text-foreground mb-2 block">
-                          Cor
-                        </Label>
-                        <Input
-                          id="petColor"
-                          name="petColor"
-                          value={formData.petColor}
-                          onChange={handleInputChange}
-                          placeholder="Ex: Marrom e branco"
-                          className="h-10 rounded-xl border-border/50"
+                      <div className="space-y-1.5">
+                        <Label className="text-sm">Raça</Label>
+                        <BreedSelector
+                          species={formData.petSpecies}
+                          value={formData.petBreed}
+                          onChange={v => setFormData(p => ({ ...p, petBreed: v }))}
+                          disabled={!formData.petSpecies}
                         />
                       </div>
-
-                      <div>
-                        <Label htmlFor="petNotes" className="text-sm font-medium text-foreground mb-2 block">
-                          Observações sobre o Pet
-                        </Label>
-                        <Textarea
-                          id="petNotes"
-                          name="petNotes"
-                          value={formData.petNotes}
-                          onChange={handleInputChange}
-                          placeholder="Comportamento, alergias, medicamentos em uso, etc."
-                          rows={3}
-                          className="rounded-xl border-border/50 resize-none"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-muted/30 rounded-xl p-6 border border-border/40">
-                      <Label className="text-base font-medium text-foreground mb-4 block">
-                        Informações do Pet Selecionado
-                      </Label>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Nome:</span>
-                          <p className="font-medium text-foreground">{selectedPet.name}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Espécie:</span>
-                          <p className="font-medium text-foreground">{selectedPet.species === 'dog' ? 'Cachorro' : selectedPet.species === 'cat' ? 'Gato' : selectedPet.species}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Raça:</span>
-                          <p className="font-medium text-foreground">{selectedPet.breed}</p>
-                        </div>
-                        {selectedPet.age && (
-                          <div>
-                            <span className="text-muted-foreground">Idade:</span>
-                            <p className="font-medium text-foreground">{selectedPet.age}</p>
-                          </div>
-                        )}
-                        {selectedPet.weight && (
-                          <div>
-                            <span className="text-muted-foreground">Peso:</span>
-                            <p className="font-medium text-foreground">{selectedPet.weight}</p>
-                          </div>
-                        )}
-                        {selectedPet.color && (
-                          <div>
-                            <span className="text-muted-foreground">Cor:</span>
-                            <p className="font-medium text-foreground">{selectedPet.color}</p>
-                          </div>
-                        )}
-                      </div>
-                      {selectedPet.notes && (
-                        <div className="mt-4">
-                          <span className="text-muted-foreground text-sm">Observações:</span>
-                          <p className="text-foreground mt-1">{selectedPet.notes}</p>
-                        </div>
-                      )}
                     </div>
                   )}
 
+                  {/* Pet selecionado — resumo */}
+                  {selectedPet && (
+                    <div className="bg-muted/30 rounded-xl p-4 border border-border/40">
+                      <Label className="text-sm font-medium block mb-2">Pet selecionado</Label>
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="font-semibold text-foreground">{selectedPet.name}</span>
+                        <span className="text-muted-foreground">{SPECIES_LABELS[selectedPet.species] ?? selectedPet.species}</span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-muted-foreground">{selectedPet.breed}</span>
+                      </div>
+                    </div>
+                  )}
 
-
-                  {/* Upload de arquivo para serviços especializados */}
+                  {/* Encaminhamento */}
                   {needsReferral && (
-                    <div>
-                      <Label className="text-base font-medium text-foreground mb-3 block">
-                        Encaminhamento do Clínico Geral *
-                      </Label>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Para atendimentos especializados é necessário anexar o documento de encaminhamento do clínico geral.
-                      </p>
-                      
+                    <div className="space-y-2">
+                      <Label className="text-base font-medium">Encaminhamento do Clínico Geral *</Label>
+                      <p className="text-sm text-muted-foreground">Para atendimentos especializados é necessário o encaminhamento.</p>
                       <div className="border-2 border-dashed border-border/50 rounded-xl p-6">
                         {!file ? (
                           <div className="text-center">
-                            <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                            <p className="text-muted-foreground mb-4">
-                              Clique para selecionar ou arraste o arquivo aqui
-                            </p>
-                            <input
-                              type="file"
-                              onChange={handleFileChange}
-                              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                              className="hidden"
-                              id="file-upload"
-                            />
-                            <Label
-                              htmlFor="file-upload"
-                              className="inline-flex items-center justify-center px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 cursor-pointer smooth-transition"
-                            >
+                            <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                            <p className="text-sm text-muted-foreground mb-3">Clique para selecionar ou arraste aqui</p>
+                            <input type="file" id="file-upload" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                              className="hidden" onChange={e => setFile(e.target.files?.[0] ?? null)} />
+                            <Label htmlFor="file-upload"
+                              className="inline-flex items-center px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm cursor-pointer hover:bg-primary/90 smooth-transition">
                               Selecionar Arquivo
                             </Label>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              Formatos aceitos: PDF, JPG, PNG, DOC, DOCX (máx. 10MB)
-                            </p>
+                            <p className="text-xs text-muted-foreground mt-2">PDF, JPG, PNG, DOC — máx. 10 MB</p>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-between bg-muted/50 rounded-xl p-4">
+                          <div className="flex items-center justify-between bg-muted/50 rounded-xl p-3">
                             <div>
-                              <p className="font-medium text-foreground">{file.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {(file.size / 1024 / 1024).toFixed(2)} MB
-                              </p>
+                              <p className="font-medium text-sm">{file.name}</p>
+                              <p className="text-xs text-muted-foreground">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                             </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={removeFile}
-                              className="text-red-500 hover:text-red-600"
-                            >
+                            <Button type="button" variant="ghost" size="sm" onClick={() => setFile(null)}
+                              className="text-red-500 hover:text-red-600 h-8 w-8 p-0">
                               <X className="w-4 h-4" />
                             </Button>
                           </div>
@@ -625,21 +342,12 @@ const CreateTicket = () => {
                     </div>
                   )}
 
-                  {/* Botões */}
-                  <div className="flex gap-4 pt-6">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => navigate(-1)}
-                      className="flex-1 h-12 rounded-xl border-border/50"
-                    >
+                  <div className="flex gap-4 pt-4">
+                    <Button type="button" variant="outline" onClick={() => navigate(-1)} className="flex-1 h-12 rounded-xl">
                       Cancelar
                     </Button>
-                    <Button
-                      type="submit"
-                      className="flex-1 h-12 bg-primary text-white hover:bg-primary/90 rounded-xl"
-                    >
-                      Enviar Chamado
+                    <Button type="submit" disabled={submitting} className="flex-1 h-12 rounded-xl gradient-purple text-white hover:opacity-90">
+                      {submitting ? 'Enviando…' : 'Enviar Chamado'}
                     </Button>
                   </div>
                 </>
@@ -648,7 +356,6 @@ const CreateTicket = () => {
           </div>
         </div>
       </main>
-
       <Footer />
     </div>
   );

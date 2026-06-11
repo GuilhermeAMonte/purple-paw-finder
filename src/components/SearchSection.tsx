@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, MapPin } from 'lucide-react';
+import { Search, MapPin, Shield, Zap, Heart } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { CLINIC_SPECIALTIES } from '@/constants/specialties';
 import { fetchClinics } from '@/lib/clinicSearch';
@@ -19,11 +19,9 @@ const SearchSection = () => {
     staleTime: 30_000,
   });
 
-  // Function to normalize text
   const normalize = (str: string) =>
-    str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    str.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-  // Generate all possible suggestions
   const allLocations = Array.from(new Set(
     clinics.flatMap((c: any) => [
       c.neighborhood && c.city && c.state ? `${c.neighborhood} - ${c.city}, ${c.state}` : '',
@@ -34,7 +32,6 @@ const SearchSection = () => {
     ]).filter((v): v is string => typeof v === 'string' && v.length > 0)
   ));
 
-  // Function to check if search term matches clinic location
   const matchLocation = (searchTerm: string, clinic: any) => {
     const searchNorm = normalize(searchTerm);
     const clinicFull = normalize(
@@ -43,7 +40,6 @@ const SearchSection = () => {
     return clinicFull.includes(searchNorm);
   };
 
-  // Update suggestions while typing
   useEffect(() => {
     if (!location.trim()) {
       setSuggestions([]);
@@ -52,9 +48,7 @@ const SearchSection = () => {
       return;
     }
 
-    const matchingClinics = clinics.filter(clinic =>
-      matchLocation(location, clinic)
-    );
+    const matchingClinics = clinics.filter(clinic => matchLocation(location, clinic));
 
     if (matchingClinics.length === 0) {
       const generic = allLocations.filter(loc =>
@@ -81,15 +75,11 @@ const SearchSection = () => {
     setNoResults(false);
   }, [location]);
 
-  // Listen to localStorage changes
   useEffect(() => {
     const handleStorageChange = () => {
-      const savedLocation = localStorage.getItem('search_location') || '';
-      const savedSpecialty = localStorage.getItem('search_specialty') || '';
-      setLocation(savedLocation);
-      setSpecialty(savedSpecialty);
+      setLocation(localStorage.getItem('search_location') || '');
+      setSpecialty(localStorage.getItem('search_specialty') || '');
     };
-
     window.addEventListener('localStorageChange', handleStorageChange);
     return () => window.removeEventListener('localStorageChange', handleStorageChange);
   }, []);
@@ -98,92 +88,138 @@ const SearchSection = () => {
     e.preventDefault();
     localStorage.setItem('search_location', location);
     localStorage.setItem('search_specialty', specialty);
-
-    const event = new Event('localStorageChange');
-    window.dispatchEvent(event);
-
+    window.dispatchEvent(new Event('localStorageChange'));
     setTimeout(() => {
-      const resultsSection = document.querySelector('#clinics-results');
-      if (resultsSection) {
-        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      document.querySelector('#clinics-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
   };
 
+  const stats = [
+    { icon: Heart, label: 'Verified clinics', value: `${clinics.length}+` },
+    { icon: Zap, label: '24h Emergency', value: `${clinics.filter((c: any) => c.emergency).length}` },
+    { icon: Shield, label: 'Trusted by pet owners', value: '10k+' },
+  ];
+
   return (
-    <section id="search" className="relative min-h-[600px] flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/60 to-background/80"></div>
-      
-      <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
-        <div className="animate-fade-in">
-          <h1 className="text-5xl md:text-7xl font-light text-foreground mb-6 leading-tight tracking-tight">
-            Veterinary care
-            <br />
-            <span className="font-medium text-primary">close to you</span>
-          </h1>
-          <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed font-light">
-            With Paw Connect, find the best professionals for your pet's care
-          </p>
+    <section className="relative overflow-hidden gradient-hero min-h-[620px] flex flex-col items-center justify-center">
+
+      {/* Decorative blobs */}
+      <div
+        aria-hidden
+        className="absolute -top-32 -left-32 w-[480px] h-[480px] rounded-full opacity-[0.06] animate-blob"
+        style={{ background: 'radial-gradient(circle, hsl(262 83% 58%), transparent 70%)' }}
+      />
+      <div
+        aria-hidden
+        className="absolute -bottom-24 -right-24 w-[360px] h-[360px] rounded-full opacity-[0.05] animate-blob"
+        style={{ background: 'radial-gradient(circle, hsl(290 70% 52%), transparent 70%)', animationDelay: '3s' }}
+      />
+      <div
+        aria-hidden
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full opacity-[0.025] pointer-events-none"
+        style={{ background: 'radial-gradient(circle, hsl(262 83% 68%), transparent 60%)' }}
+      />
+
+      <div className="relative z-10 w-full max-w-4xl mx-auto px-5 sm:px-8 py-20 text-center">
+
+        {/* Eyebrow tag */}
+        <div className="animate-fade-in-down inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/8 border border-primary/15 text-primary text-sm font-medium mb-8">
+          <Zap className="w-3.5 h-3.5" />
+          <span>Find veterinary care near you</span>
         </div>
 
-        <form className="glass-effect rounded-2xl p-8 max-w-3xl mx-auto animate-slide-up border border-border/20" onSubmit={handleSearch}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="relative">
-              <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+        {/* Heading */}
+        <h1 className="text-hero text-foreground mb-5 text-balance animate-fade-in-up" style={{ animationDelay: '0.05s' }}>
+          Veterinary care,
+          <br />
+          <span className="bg-gradient-to-r from-primary via-violet-500 to-purple-400 bg-clip-text text-transparent">
+            close to you
+          </span>
+        </h1>
+
+        <p className="text-large text-muted-foreground mb-10 max-w-xl mx-auto text-balance animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+          Find the best professionals for your pet's care with Paw Connect — fast, reliable, and always nearby.
+        </p>
+
+        {/* Search form */}
+        <form
+          onSubmit={handleSearch}
+          className="glass-effect rounded-2xl p-2 max-w-3xl mx-auto animate-scale-in border border-white/60"
+          style={{ animationDelay: '0.15s', boxShadow: '0 8px 40px rgba(139,92,246,0.12), 0 2px 8px rgba(0,0,0,0.06)' }}
+        >
+          <div className="flex flex-col sm:flex-row gap-2">
+            {/* Location input */}
+            <div className="relative flex-1">
+              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
               <Input
-                placeholder="Your location (neighborhood, city or state)"
+                placeholder="Neighborhood, city or state"
                 value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                onChange={e => setLocation(e.target.value)}
                 onFocus={() => setShowSuggestions(suggestions.length > 0)}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                 autoComplete="off"
-                className="pl-12 h-14 rounded-xl border-border/30 bg-background/80 text-lg font-light focus:ring-2 focus:ring-primary/20 focus:border-primary/40 smooth-transition"
+                className="pl-11 h-12 rounded-xl border-transparent bg-background/70 focus:bg-background text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary/30 smooth-transition placeholder:text-muted-foreground/60"
               />
               {showSuggestions && (
-                <ul className="absolute left-0 right-0 top-full mt-2 bg-white border rounded-xl shadow-lg z-20 max-h-60 overflow-auto text-left">
+                <ul className="absolute left-0 right-0 top-full mt-1.5 bg-popover border border-border/50 rounded-xl shadow-xl z-20 max-h-52 overflow-auto text-left divide-y divide-border/30 animate-fade-in-down">
                   {suggestions.map((s, idx) => (
                     <li
                       key={s + idx}
-                      className="px-4 py-2 cursor-pointer hover:bg-primary/10"
-                      onMouseDown={() => {
-                        setLocation(s);
-                        setShowSuggestions(false);
-                      }}
+                      className="px-4 py-2.5 text-sm cursor-pointer hover:bg-primary/5 smooth-transition first:rounded-t-xl last:rounded-b-xl flex items-center gap-2"
+                      onMouseDown={() => { setLocation(s); setShowSuggestions(false); }}
                     >
+                      <MapPin className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                       {s}
                     </li>
                   ))}
                 </ul>
               )}
               {!showSuggestions && noResults && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  No clinics registered in this region
+                <p className="absolute left-0 top-full mt-1.5 text-xs text-muted-foreground px-2">
+                  No clinics found in this region
                 </p>
               )}
             </div>
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+
+            {/* Specialty select */}
+            <div className="relative sm:w-[220px]">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none z-10" />
               <select
                 value={specialty}
                 onChange={e => setSpecialty(e.target.value)}
-                className="pl-12 h-14 rounded-xl border border-border/30 bg-background/80 text-lg font-light w-full focus:ring-2 focus:ring-primary/20 focus:border-primary/40 smooth-transition"
+                className="pl-11 h-12 rounded-xl border border-transparent bg-background/70 text-sm w-full focus:ring-2 focus:ring-primary/20 focus:border-primary/30 smooth-transition appearance-none cursor-pointer text-foreground"
               >
                 <option value="">All specialties</option>
-                {CLINIC_SPECIALTIES.map((spec) => (
+                {CLINIC_SPECIALTIES.map(spec => (
                   <option key={spec} value={spec}>{spec}</option>
                 ))}
               </select>
             </div>
+
+            {/* Search button */}
+            <Button
+              size="lg"
+              type="submit"
+              className="h-12 px-6 rounded-xl gradient-purple text-white font-medium shadow-sm hover:opacity-90 smooth-transition hover-glow flex-shrink-0"
+            >
+              <Search className="w-4 h-4 mr-2" />
+              Search
+            </Button>
           </div>
-          <Button 
-            size="lg" 
-            type="submit"
-            className="w-full h-14 text-lg font-medium rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl smooth-transition hover-lift"
-          >
-            <Search className="w-5 h-5 mr-3" />
-            Search veterinary clinics
-          </Button>
         </form>
+
+        {/* Stats row */}
+        {clinics.length > 0 && (
+          <div className="flex items-center justify-center gap-8 mt-10 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+            {stats.map(({ icon: Icon, label, value }) => (
+              <div key={label} className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Icon className="w-4 h-4 text-primary/70" />
+                <span className="font-semibold text-foreground">{value}</span>
+                <span className="hidden sm:inline">{label}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

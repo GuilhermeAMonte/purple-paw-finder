@@ -7,11 +7,12 @@ import Footer from '@/components/Footer';
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <Header />
-      <SearchSection />
-      {/* Meus Chamados e TicketsList agora aparecem apenas na aba Tickets do FeaturedClinics */}
-      <FeaturedClinics />
+      <main>
+        <SearchSection />
+        <FeaturedClinics />
+      </main>
       <Footer />
     </div>
   );

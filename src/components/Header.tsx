@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { PawPrint, User, LogOut, Settings, Calendar } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { PawPrint, User, LogOut, Settings, Calendar, ChevronDown, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,115 +8,151 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 const Header = () => {
   const { user, logout, isAuthenticated } = useAuth();
+  const [scrolled, setScrolled] = useState(false);
 
-  const getFirstName = (fullName: string) => {
-    return fullName.split(' ')[0];
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const getFirstName = (fullName: string) => fullName.split(' ')[0];
+
+  const getInitials = (fullName: string) => {
+    const parts = fullName.trim().split(' ');
+    return parts.length > 1
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : parts[0].slice(0, 2).toUpperCase();
   };
 
   return (
-    <header className="glass-effect sticky top-0 z-50 border-b border-border/40">
-      <div className="max-w-7xl mx-auto px-6 py-4">
-        <div className="flex items-center justify-between">
+    <header
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? 'glass-effect shadow-depth-sm border-b border-border/50'
+          : 'bg-background/95 border-b border-border/30'
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-5 sm:px-8">
+        <div className="flex items-center justify-between h-[60px]">
+
           {/* Logo */}
-          <Link 
-            to="/" 
-            className="flex items-center space-x-3 smooth-transition hover:opacity-80"
+          <Link
+            to="/"
+            className="flex items-center gap-2.5 group"
             onClick={() => {
-              // Limpa os filtros no localStorage
               localStorage.removeItem('search_location');
               localStorage.removeItem('search_specialty');
-              
-              // Dispara evento para atualizar os componentes
               window.dispatchEvent(new Event('localStorageChange'));
-              
-              // Rola para o topo da página
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           >
-            <div className="w-9 h-9 bg-foreground rounded-full flex items-center justify-center">
-              <PawPrint className="w-5 h-5 text-background" />
+            <div className="relative w-8 h-8 flex-shrink-0">
+              <div className="absolute inset-0 gradient-purple rounded-xl opacity-90 group-hover:opacity-100 transition-opacity" />
+              <PawPrint className="absolute inset-0 m-auto w-4 h-4 text-white" />
             </div>
-            <h1 className="text-xl font-semibold text-foreground">
-              Paw Connect
-            </h1>
+            <span className="text-[17px] font-semibold tracking-tight text-foreground">
+              Paw<span className="text-primary">Connect</span>
+            </span>
           </Link>
 
-
-
-          {/* User Actions */}
-          <div className="flex items-center space-x-4">
+          {/* Right side */}
+          <div className="flex items-center gap-2">
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="text-foreground hover:bg-muted/50 smooth-transition rounded-full px-4 py-2"
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-2 h-9 px-3 rounded-xl hover:bg-muted/60 smooth-transition"
                   >
-                    <User className="w-4 h-4 mr-2" />
-                    {getFirstName(user!.name)}
+                    {/* Avatar */}
+                    <div className="w-6 h-6 rounded-full gradient-purple flex items-center justify-center flex-shrink-0">
+                      <span className="text-[10px] font-semibold text-white leading-none">
+                        {getInitials(user!.name)}
+                      </span>
+                    </div>
+                    <span className="text-sm font-medium text-foreground hidden sm:block">
+                      {getFirstName(user!.name)}
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  align="end" 
-                  className="glass-effect border-border/40 rounded-xl shadow-lg"
+
+                <DropdownMenuContent
+                  align="end"
+                  sideOffset={8}
+                  className="w-52 glass-effect border-border/40 rounded-2xl shadow-xl p-1.5 animate-fade-in-down"
                 >
+                  {/* User info header */}
+                  <div className="px-3 py-2.5 mb-1">
+                    <p className="text-sm font-semibold text-foreground truncate">{user!.name}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{user?.userType}</p>
+                  </div>
+                  <DropdownMenuSeparator className="bg-border/50 my-1" />
+
                   <DropdownMenuItem asChild>
-                    <Link 
-                      to="/profile"
-                      className="text-sm rounded-lg smooth-transition cursor-pointer"
-                    >
-                      <Settings className="w-4 h-4 mr-2" />
-                      My Profile
+                    <Link to="/profile" className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm smooth-transition cursor-pointer">
+                      <Settings className="w-4 h-4 text-muted-foreground" />
+                      <span>My Profile</span>
                     </Link>
                   </DropdownMenuItem>
+
                   {user?.userType === 'client' && (
                     <DropdownMenuItem asChild>
-                      <Link 
-                        to="/my-appointments"
-                        className="text-sm rounded-lg smooth-transition cursor-pointer"
-                      >
-                        <Calendar className="w-4 h-4 mr-2" />
-                        My Appointments
+                      <Link to="/my-appointments" className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm smooth-transition cursor-pointer">
+                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                        <span>My Appointments</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
+
                   {user?.userType === 'clinic' && (
                     <DropdownMenuItem asChild>
-                      <Link 
-                        to="/clinic-dashboard"
-                        className="text-sm rounded-lg smooth-transition cursor-pointer"
-                      >
-                        <Settings className="w-4 h-4 mr-2" />
-                        Dashboard
+                      <Link to="/clinic-dashboard" className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm smooth-transition cursor-pointer">
+                        <Sparkles className="w-4 h-4 text-muted-foreground" />
+                        <span>Dashboard</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem 
+
+                  <DropdownMenuSeparator className="bg-border/50 my-1" />
+
+                  <DropdownMenuItem
                     onClick={logout}
-                    className="text-sm rounded-lg smooth-transition"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-destructive focus:text-destructive focus:bg-destructive/8 smooth-transition cursor-pointer"
                   >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
+                    <LogOut className="w-4 h-4" />
+                    <span>Logout</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link to="/login">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-foreground hover:bg-muted/50 smooth-transition rounded-full px-4 py-2"
-                >
-                  <User className="w-4 h-4 mr-2" />
-                  Login
-                </Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link to="/login">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 px-4 rounded-xl text-sm font-medium hover:bg-muted/60 smooth-transition"
+                  >
+                    Login
+                  </Button>
+                </Link>
+                <Link to="/register">
+                  <Button
+                    size="sm"
+                    className="h-9 px-4 rounded-xl text-sm font-medium gradient-purple text-white hover:opacity-90 smooth-transition shadow-sm hover-glow"
+                  >
+                    Get started
+                  </Button>
+                </Link>
+              </div>
             )}
           </div>
         </div>

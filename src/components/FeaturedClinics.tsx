@@ -5,6 +5,26 @@ import ClinicCard from './ClinicCard';
 import LocationPermissionDialog from './LocationPermissionDialog';
 import { useGeolocation, calculateDistance } from '@/hooks/use-geolocation';
 import { fetchClinics, filterAndSortClinics } from '@/lib/clinicSearch';
+import { Search, SlidersHorizontal, MapPin, X } from 'lucide-react';
+
+const SkeletonCard = () => (
+  <div className="bg-card rounded-2xl border border-border/40 overflow-hidden shadow-depth-sm">
+    <div className="h-44 skeleton" />
+    <div className="p-5 space-y-3">
+      <div className="flex justify-between gap-2">
+        <div className="h-4 w-3/5 skeleton" />
+        <div className="h-5 w-16 rounded-full skeleton" />
+      </div>
+      <div className="h-3 w-4/5 skeleton" />
+      <div className="flex gap-1.5">
+        <div className="h-5 w-20 rounded-full skeleton" />
+        <div className="h-5 w-24 rounded-full skeleton" />
+        <div className="h-5 w-16 rounded-full skeleton" />
+      </div>
+      <div className="h-9 rounded-xl skeleton" />
+    </div>
+  </div>
+);
 
 const FeaturedClinics = () => {
   const { user } = useAuth();
@@ -22,7 +42,6 @@ const FeaturedClinics = () => {
     staleTime: 30_000,
   });
 
-  // Reage à submissão de busca (disparada pelo SearchSection).
   useEffect(() => {
     const handleSearch = () => {
       setSearchParams({
@@ -35,7 +54,6 @@ const FeaturedClinics = () => {
     return () => window.removeEventListener('localStorageChange', handleSearch);
   }, []);
 
-  // Pede permissão de localização para clientes na primeira visita.
   useEffect(() => {
     const locationAsked = localStorage.getItem('location_permission_asked');
     if (user && user.userType === 'client' && !locationAsked && !coordinates) {
@@ -75,6 +93,8 @@ const FeaturedClinics = () => {
     setHasSearched(false);
   };
 
+  const hasFilters = !!(searchParams.location || searchParams.specialty);
+
   return (
     <>
       <LocationPermissionDialog
@@ -83,37 +103,77 @@ const FeaturedClinics = () => {
         onAccept={handleAcceptLocation}
         onDecline={handleDeclineLocation}
       />
+
       {hasSearched && (
-        <section id="clinics-results" className="py-6 px-4 md:px-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-foreground">
-              Clínicas encontradas: {filteredClinics.length}
-            </h2>
-            <button
-              onClick={handleClearFilters}
-              className="text-sm text-blue-600 underline hover:text-blue-800 transition"
-            >
-              Limpar busca
-            </button>
+        <section id="clinics-results" className="py-12 px-5 sm:px-8 max-w-7xl mx-auto animate-fade-in-up">
+
+          {/* Section header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl gradient-purple flex items-center justify-center shadow-sm flex-shrink-0">
+                <Search className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-foreground leading-tight">
+                  {isLoading ? 'Searching…' : (
+                    filteredClinics.length > 0
+                      ? `${filteredClinics.length} clinic${filteredClinics.length !== 1 ? 's' : ''} found`
+                      : 'No clinics found'
+                  )}
+                </h2>
+                {hasFilters && !isLoading && (
+                  <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1">
+                    {searchParams.location && (
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {searchParams.location}
+                      </span>
+                    )}
+                    {searchParams.location && searchParams.specialty && <span>·</span>}
+                    {searchParams.specialty && <span>{searchParams.specialty}</span>}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {hasFilters && (
+              <button
+                onClick={handleClearFilters}
+                className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-muted/50 hover:bg-muted border border-border/50 rounded-xl px-4 py-2 smooth-transition self-start sm:self-auto"
+              >
+                <X className="w-3.5 h-3.5" />
+                Clear filters
+              </button>
+            )}
           </div>
 
+          {/* Grid */}
           {isLoading ? (
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="h-80 rounded-2xl bg-muted/40 animate-pulse" />
-              ))}
+            <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {[0, 1, 2, 3, 4, 5].map(i => <SkeletonCard key={i} />)}
             </div>
           ) : filteredClinics.length === 0 ? (
-            <p className="text-center mt-8 text-lg">
-              Nenhuma clínica encontrada para os critérios selecionados
-            </p>
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-muted/60 flex items-center justify-center mb-4">
+                <SlidersHorizontal className="w-7 h-7 text-muted-foreground/50" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">No clinics found</h3>
+              <p className="text-muted-foreground max-w-sm text-sm leading-relaxed">
+                No clinics match the selected filters. Try a different location or specialty.
+              </p>
+              <button
+                onClick={handleClearFilters}
+                className="mt-6 text-sm font-medium text-primary hover:text-primary/80 underline underline-offset-4 smooth-transition"
+              >
+                Clear filters and show all
+              </button>
+            </div>
           ) : (
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 stagger">
+            <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 stagger">
               {filteredClinics.map((clinic) => {
-                const distance =
-                  coordinates && clinic.lat != null && clinic.lng != null
-                    ? calculateDistance(coordinates.latitude, coordinates.longitude, clinic.lat, clinic.lng)
-                    : null;
+                const distance = coordinates && clinic.lat != null && clinic.lng != null
+                  ? calculateDistance(coordinates.latitude, coordinates.longitude, clinic.lat, clinic.lng)
+                  : null;
                 const distanceText = distance != null ? `${distance.toFixed(1)} km` : '-- km';
 
                 return (

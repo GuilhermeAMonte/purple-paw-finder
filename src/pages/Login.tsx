@@ -4,8 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, Heart, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, PawPrint, ArrowLeft, Shield, Sparkles, Heart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { loginSchema } from '@/schemas/auth.schemas';
@@ -25,8 +24,8 @@ const Login = () => {
     const parsed = loginSchema.safeParse({ email, password });
     if (!parsed.success) {
       toast({
-        title: "Verifique os dados",
-        description: parsed.error.issues[0]?.message ?? "Preencha os campos corretamente.",
+        title: "Please check your details",
+        description: parsed.error.issues[0]?.message ?? "Fill in the fields correctly.",
         variant: "destructive",
       });
       return;
@@ -35,13 +34,8 @@ const Login = () => {
     setIsLoading(true);
     try {
       const loggedUser = await login(email, password);
+      toast({ title: "Welcome back!", description: "Login successful." });
 
-      toast({
-        title: "Success!",
-        description: "Login successful.",
-      });
-
-      // Redireciona conforme o tipo de usuário carregado da sessão.
       if (loggedUser?.userType === 'clinic') {
         navigate(loggedUser.isProfileComplete ? '/clinic-dashboard' : '/clinic-setup');
       } else {
@@ -49,130 +43,165 @@ const Login = () => {
       }
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: "Authentication failed",
         description: error.message || "Invalid credentials. Please try again.",
         variant: "destructive",
       });
     }
-
     setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-purple-light flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header with logo and back button */}
-        <div className="mb-8 text-center">
-          <Link to="/" className="inline-flex items-center text-purple-600 hover:text-purple-700 mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to home
-          </Link>
-          
-          <div className="flex items-center justify-center space-x-2 mb-2">
-            <div className="w-12 h-12 gradient-purple rounded-full flex items-center justify-center">
-              <Heart className="w-7 h-7 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent">
-              Paw Connect
-            </h1>
+    <div className="min-h-screen flex">
+
+      {/* Left panel — branding (hidden on mobile) */}
+      <div className="hidden lg:flex lg:flex-col lg:w-[46%] xl:w-[42%] relative overflow-hidden bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-12 text-white">
+        {/* Noise overlay */}
+        <div className="absolute inset-0 opacity-[0.04]"
+          style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")" }}
+        />
+        {/* Blobs */}
+        <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-white/10 animate-blob" />
+        <div className="absolute bottom-12 -left-12 w-48 h-48 rounded-full bg-white/8 animate-blob" style={{ animationDelay: '4s' }} />
+
+        {/* Logo */}
+        <div className="relative z-10 flex items-center gap-3 mb-auto">
+          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/30">
+            <PawPrint className="w-5 h-5 text-white" />
           </div>
-          <p className="text-gray-600">Sign in to your account</p>
+          <span className="text-xl font-semibold tracking-tight">PawConnect</span>
         </div>
 
-        <Card className="shadow-lg border-purple-100">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center text-gray-800">
-              Login
-            </CardTitle>
-            <CardDescription className="text-center text-gray-600">
-              Enter your email and password to access your account
-            </CardDescription>
-          </CardHeader>
-          
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                  className="border-purple-200 focus:border-purple-400 focus:ring-purple-400"
-                />
-              </div>
+        {/* Copy */}
+        <div className="relative z-10 mb-auto">
+          <h2 className="text-3xl font-bold mb-4 leading-tight">
+            Your pet deserves<br />the best care
+          </h2>
+          <p className="text-white/70 leading-relaxed">
+            Connect with verified veterinary clinics near you. Fast, reliable and always available.
+          </p>
+        </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-700">
+        {/* Trust badges */}
+        <div className="relative z-10 space-y-3">
+          {[
+            { icon: Shield, text: 'End-to-end encrypted' },
+            { icon: Sparkles, text: 'Verified clinics only' },
+            { icon: Heart, text: 'Trusted by 10,000+ pet owners' },
+          ].map(({ icon: Icon, text }) => (
+            <div key={text} className="flex items-center gap-3 text-sm text-white/80">
+              <div className="w-7 h-7 bg-white/15 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Icon className="w-3.5 h-3.5 text-white" />
+              </div>
+              {text}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Right panel — form */}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 bg-background">
+        <div className="w-full max-w-[400px]">
+
+          {/* Mobile logo */}
+          <div className="flex items-center gap-2.5 mb-8 lg:hidden">
+            <div className="w-9 h-9 gradient-purple rounded-xl flex items-center justify-center">
+              <PawPrint className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-[17px] font-semibold text-foreground">Paw<span className="text-primary">Connect</span></span>
+          </div>
+
+          {/* Back link */}
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground smooth-transition mb-8 group"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+            Back to home
+          </Link>
+
+          {/* Heading */}
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-foreground tracking-tight mb-1">Welcome back</h1>
+            <p className="text-sm text-muted-foreground">Sign in to continue to PawConnect</p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-sm font-medium text-foreground/90">
+                Email address
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                className="h-11 rounded-xl border-border/60 bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary/50 smooth-transition text-sm"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-medium text-foreground/90">
                   Password
                 </Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    autoComplete="current-password"
-                    className="border-purple-200 focus:border-purple-400 focus:ring-purple-400 pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-500" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-500" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Link
-                  to="/forgot-password"
-                  className="text-sm text-purple-600 hover:text-purple-700 hover:underline"
-                >
+                <Link to="/forgot-password" className="text-xs text-primary hover:text-primary/80 smooth-transition">
                   Forgot password?
                 </Link>
               </div>
-
-              <Button
-                type="submit"
-                className="w-full gradient-purple text-white hover:opacity-90 transition-opacity"
-                disabled={isLoading}
-              >
-                {isLoading ? "Logging in..." : "Login"}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Don't have an account?{' '}
-                <Link
-                  to="/register"
-                  className="text-purple-600 hover:text-purple-700 font-medium hover:underline"
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="h-11 rounded-xl border-border/60 bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary/50 smooth-transition text-sm pr-11"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground smooth-transition p-0.5"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  Sign up
-                </Link>
-              </p>
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Security information */}
-        <div className="mt-6 text-center text-xs text-gray-500">
-          <p>🔒 Your information is protected with end-to-end encryption</p>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-11 rounded-xl gradient-purple text-white font-medium hover:opacity-90 smooth-transition shadow-sm hover-glow disabled:opacity-60"
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Signing in…
+                </span>
+              ) : 'Sign in'}
+            </Button>
+          </form>
+
+          {/* Sign up link */}
+          <p className="text-sm text-muted-foreground text-center mt-6">
+            Don't have an account?{' '}
+            <Link to="/register" className="text-primary font-medium hover:text-primary/80 smooth-transition">
+              Create account
+            </Link>
+          </p>
+
+          {/* Security note */}
+          <div className="flex items-center gap-2 mt-8 text-xs text-muted-foreground/60 justify-center">
+            <Shield className="w-3.5 h-3.5" />
+            Protected with end-to-end encryption
+          </div>
         </div>
       </div>
     </div>

@@ -21,6 +21,7 @@ import ClinicSetup from "./pages/ClinicSetup";
 import ClinicVisualSetup from "./pages/ClinicVisualSetup";
 import ClinicDashboard from "./pages/ClinicDashboard";
 import NotFound from "./pages/NotFound";
+import ForgotPassword from "./pages/ForgotPassword";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
               {/* Públicas */}
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/register" element={<Register />} />
               <Route path="/client-register" element={<ClientRegister />} />
 
