@@ -76,7 +76,18 @@ const ClientRegister = () => {
 
     if (cep.length === 8) {
       try {
-        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const allowedDomains = ['viacep.com.br'];
+        const sanitizedCep = cep.replace(/[^0-9]/g, '');
+        const targetUrl = new URL(`https://viacep.com.br/ws/${sanitizedCep}/json/`);
+        const hostname = targetUrl.hostname;
+        if (
+          !allowedDomains.includes(hostname) ||
+          /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(hostname) ||
+          hostname === 'localhost'
+        ) {
+          throw new Error('Request blocked');
+        }
+        const response = await fetch(targetUrl.toString());
         const data = await response.json();
         
         if (!data.erro) {
