@@ -19,6 +19,47 @@ export interface DaySchedule {
 }
 export type WeekSchedule = Record<string, DaySchedule>;
 
+/**
+ * Mapeia erros do Supabase (Postgres) ao salvar dados da clínica para
+ * mensagens user-friendly sem expor internals do banco.
+ */
+function mapClinicSaveError(message: string, code?: string): string {
+  const lower = message.toLowerCase();
+
+  // Violação de unicidade (ex: CNPJ duplicado)
+  if (code === '23505' || lower.includes('duplicate') || lower.includes('unique')) {
+    if (lower.includes('cnpj')) {
+      return 'Esse CNPJ já está cadastrado em outra clínica.';
+    }
+    if (lower.includes('phone')) {
+      return 'Esse telefone já está em uso por outra clínica.';
+    }
+    return 'Alguns dos dados informados já estão em uso por outra clínica. Verifique CNPJ e telefone.';
+  }
+
+  // Violação de check constraint
+  if (code === '23514' || lower.includes('check') || lower.includes('violates')) {
+    return 'Alguns campos possuem valores fora do permitido. Verifique os dados e tente novamente.';
+  }
+
+  // Permissão negada (RLS)
+  if (code === '42501' || lower.includes('permission denied') || lower.includes('rls')) {
+    return 'Você não tem permissão para realizar essa ação. Faça login novamente.';
+  }
+
+  // Sem linhas afetadas (clínica não encontrada)
+  if (lower.includes('no rows') || lower.includes('0 rows')) {
+    return 'Não foi possível localizar o perfil da clínica. Faça logout e entre novamente.';
+  }
+
+  // Timeout / conexão
+  if (lower.includes('timeout') || lower.includes('network') || lower.includes('fetch')) {
+    return 'Erro de conexão com o servidor. Verifique sua internet e tente novamente.';
+  }
+
+  return 'Não foi possível salvar as alterações. Tente novamente em alguns instantes.';
+}
+
 /** Busca a clínica do usuário autenticado (para pré-preencher formulários). */
 export async function getClinic(clinicId: string): Promise<ClinicRow | null> {
   const { data, error } = await supabase
@@ -47,7 +88,7 @@ export async function saveClinicSetup(
 
   // Geocodifica o endereço para permitir busca por proximidade (best-effort).
   const geo = await geocodeAddress({
-    street: data.address,
+    street: [data.street, data.number].filter(Boolean).join(', '),
     city: data.city,
     state: data.state,
     zipCode: data.cep,
@@ -59,7 +100,9 @@ export async function saveClinicSetup(
       clinic_name: data.clinicName,
       cnpj: stripCNPJ(data.cnpj),
       phone: data.phone,
-      street: data.address,
+      street: data.street,
+      number: data.number,
+      neighborhood: data.neighborhood || null,
       city: data.city || null,
       state: data.state || null,
       zip_code: data.cep || null,
@@ -75,7 +118,7 @@ export async function saveClinicSetup(
 
   if (clinicError) {
     console.error('[clinics] Erro ao salvar setup:', clinicError.message);
-    throw new Error(clinicError.message);
+    throw new Error(mapClinicSaveError(clinicError.message, clinicError.code));
   }
 
   // Marca o perfil como completo.
@@ -86,7 +129,57 @@ export async function saveClinicSetup(
 
   if (profileError) {
     console.error('[clinics] Erro ao atualizar perfil:', profileError.message);
-    throw new Error(profileError.message);
+    throw new Error(mapClinicSaveError(profileError.message, profileError.code));
+  }
+}
+
+/**
+ * Atualiza o perfil editável da clínica a partir do dialog do Dashboard.
+ * Salva na tabela clinics (nome, telefone, endereço, descrição, 24h, especialidades)
+ * e atualiza o nome no profiles para manter consistência.
+ */
+export async function updateClinicProfile(
+  clinicId: string,
+  data: {
+    clinicName: string;
+    phone: string;
+    address: string;
+    description: string;
+    is24Hours: boolean;
+    specialties: string[];
+  },
+): Promise<void> {
+  const isEmergency = data.is24Hours || data.specialties.includes('Emergência') || data.specialties.includes('Emergency');
+
+  const { error: clinicError } = await supabase
+    .from('clinics')
+    .update({
+      clinic_name: data.clinicName || null,
+      phone: data.phone || null,
+      street: data.address || null,
+      description: data.description || null,
+      is_24_hours: data.is24Hours,
+      specialties: data.specialties,
+      is_emergency_available: isEmergency,
+    })
+    .eq('id', clinicId);
+
+  if (clinicError) {
+    console.error('[clinics] Erro ao atualizar perfil da clínica:', clinicError.message);
+    throw new Error(mapClinicSaveError(clinicError.message, clinicError.code));
+  }
+
+  // Atualiza o nome também no profiles para manter consistência.
+  if (data.clinicName) {
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ name: data.clinicName })
+      .eq('id', clinicId);
+
+    if (profileError) {
+      console.error('[clinics] Erro ao sincronizar nome no profiles:', profileError.message);
+      // Não falha — o dado principal (clinics) já foi salvo.
+    }
   }
 }
 

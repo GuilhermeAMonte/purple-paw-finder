@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { EMAIL_ALREADY_REGISTERED } from '@/contexts/AuthContext';
 import BreedSelector from '@/components/BreedSelector';
 import { supabase } from '@/lib/supabase';
 import HCaptchaWidget from '@/components/HCaptchaWidget';
@@ -164,6 +165,17 @@ const ClientRegister = () => {
     } catch (error) {
       captchaRef.current?.resetCaptcha();
       setCaptchaToken('');
+
+      // Se o e-mail já está cadastrado, redireciona para o login.
+      if (error instanceof Error && (error as any).code === EMAIL_ALREADY_REGISTERED) {
+        toast({
+          title: "Conta já existente",
+          description: "Esse e-mail já possui uma conta. Redirecionando para o login...",
+        });
+        navigate('/login');
+        return;
+      }
+
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : "Erro ao criar conta.",

@@ -31,6 +31,7 @@ import {
   type Ticket,
 } from '@/lib/tickets';
 import { supabase } from '@/lib/supabase';
+import { updateClinicProfile } from '@/lib/clinics';
 
 const SPECIALTIES = [
   'General Practice','Surgery','Cardiology','Dermatology','Ophthalmology',
@@ -116,7 +117,7 @@ const AppointmentDetailModal = ({
 
 /* ── Main Dashboard ─────────────────────────────────────────────────── */
 const ClinicDashboard = () => {
-  const { user, logout, updateUserProfile } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -305,12 +306,17 @@ const ClinicDashboard = () => {
 
   /* ── Profile save ──────────────────────────────────────────────── */
   const handleProfileSave = async () => {
+    if (!clinicId) return;
     try {
-      await updateUserProfile(profileData);
+      await updateClinicProfile(clinicId, profileData);
       setProfileOpen(false);
       toast({ title: 'Perfil atualizado' });
-    } catch {
-      toast({ title: 'Erro', variant: 'destructive' });
+    } catch (error) {
+      toast({
+        title: 'Erro ao salvar perfil',
+        description: error instanceof Error ? error.message : 'Não foi possível salvar as alterações. Tente novamente.',
+        variant: 'destructive',
+      });
     }
   };
 

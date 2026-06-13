@@ -47,7 +47,12 @@ const Login = () => {
       toast({ title: "Welcome back!", description: "Login successful." });
 
       if (loggedUser?.userType === 'clinic') {
-        navigate('/clinic-dashboard');
+        // Se o perfil da clínica não está completo, direciona para o setup.
+        if (!loggedUser.isProfileComplete) {
+          navigate('/clinic-setup');
+        } else {
+          navigate('/clinic-dashboard');
+        }
       } else {
         navigate('/');
       }
