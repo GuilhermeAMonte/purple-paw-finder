@@ -17,7 +17,7 @@ import {
   DEFAULT_SLOTS, ServiceType,
   fetchVeterinarians, createVeterinarian,
   fetchVetAppointments, bookVetSlot,
-  getWeekDateRange,
+  getWeekDateRange, getWeekOfMonth, isVetWorking,
 } from '@/lib/veterinarians';
 import { CLINIC_SPECIALTIES } from '@/constants/specialties';
 import { format, parseISO, isToday, isPast } from 'date-fns';
@@ -72,14 +72,30 @@ const VetScheduleDialog: React.FC<Props> = ({
   /* New vet form */
   const [newVet, setNewVet] = useState({
     name: '', crm: '', service_type: 'in_person' as ServiceType, specialties: [] as string[],
+    work_days: [1, 2, 3, 4, 5] as number[], work_start: '08:00', work_end: '18:00',
   });
   const [savingVet, setSavingVet] = useState(false);
 
   /* Month/week navigation */
-  const today = new Date();
+  const today    = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth() + 1); // 1-based
-  const [activeWeek, setActiveWeek] = useState<Week>(1);
+  const [activeWeek, setActiveWeek] = useState<Week>(() => getWeekOfMonth(format(new Date(), 'yyyy-MM-dd')));
+
+  const isCurrentMonth = viewYear === today.getFullYear() && viewMonth === today.getMonth() + 1;
+
+  /* Semanas com ao menos um dia de hoje em diante (esconde as já passadas). */
+  const visibleWeeks = ([1, 2, 3, 4] as Week[]).filter(w =>
+    getWeekDateRange(viewYear, viewMonth, w).days.some(d => d >= todayStr)
+  );
+
+  const firstVisibleWeek = (y: number, m: number): Week => {
+    for (const w of [1, 2, 3, 4] as Week[]) {
+      if (getWeekDateRange(y, m, w).days.some(d => d >= todayStr)) return w;
+    }
+    return 1;
+  };
 
   /* Slot data */
   const [appointments, setAppointments] = useState<VetAppointment[]>([]);
@@ -99,6 +115,11 @@ const VetScheduleDialog: React.FC<Props> = ({
     setSelectedVet(null);
     setPickedDate('');
     setPickedTime('');
+    // Sempre reabre no mês/semana atuais — nada de semanas passadas.
+    const now = new Date();
+    setViewYear(now.getFullYear());
+    setViewMonth(now.getMonth() + 1);
+    setActiveWeek(getWeekOfMonth(format(now, 'yyyy-MM-dd')));
     loadVets();
   }, [open, clinicId]);
 
@@ -138,12 +159,20 @@ const VetScheduleDialog: React.FC<Props> = ({
       toast({ title: 'Required', description: 'Vet name is required.', variant: 'destructive' });
       return;
     }
+    if (newVet.work_days.length === 0) {
+      toast({ title: 'Dias de atendimento', description: 'Selecione ao menos um dia da semana.', variant: 'destructive' });
+      return;
+    }
+    if (newVet.work_start >= newVet.work_end) {
+      toast({ title: 'Horário inválido', description: 'O início do expediente deve ser antes do fim.', variant: 'destructive' });
+      return;
+    }
     setSavingVet(true);
     try {
       const created = await createVeterinarian({ ...newVet, clinic_id: clinicId });
       setVets(prev => [...prev, created]);
       setSelectedVet(created);
-      setNewVet({ name: '', crm: '', service_type: 'in_person', specialties: [] });
+      setNewVet({ name: '', crm: '', service_type: 'in_person', specialties: [], work_days: [1, 2, 3, 4, 5], work_start: '08:00', work_end: '18:00' });
       setStep('pick-slot');
       toast({ title: 'Vet registered!', description: `${created.name} added to your clinic.` });
     } catch (e: any) {
@@ -155,20 +184,25 @@ const VetScheduleDialog: React.FC<Props> = ({
 
   /* ── Navigate months ──────────────────────────────────────────────── */
   const prevMonth = () => {
-    if (viewMonth === 1) { setViewYear(y => y - 1); setViewMonth(12); }
-    else setViewMonth(m => m - 1);
-    setActiveWeek(1);
+    if (isCurrentMonth) return; // não navega para meses já encerrados
+    let y = viewYear, m = viewMonth;
+    if (m === 1) { y -= 1; m = 12; } else m -= 1;
+    setViewYear(y); setViewMonth(m);
+    setActiveWeek(firstVisibleWeek(y, m));
   };
   const nextMonth = () => {
-    if (viewMonth === 12) { setViewYear(y => y + 1); setViewMonth(1); }
-    else setViewMonth(m => m + 1);
-    setActiveWeek(1);
+    let y = viewYear, m = viewMonth;
+    if (m === 12) { y += 1; m = 1; } else m += 1;
+    setViewYear(y); setViewMonth(m);
+    setActiveWeek(firstVisibleWeek(y, m));
   };
 
   /* ── Resolve slot status for display ─────────────────────────────── */
   const resolveStatus = (date: string, time: string): 'available' | 'booked' | 'unavailable' | 'past' => {
     const slotDatetime = new Date(`${date}T${time}:00`);
     if (slotDatetime < new Date()) return 'past';
+    // Fora dos dias/horários de expediente do veterinário → vermelho.
+    if (selectedVet && !isVetWorking(selectedVet, date, time)) return 'unavailable';
     const found = appointments.find(a => a.date === date && a.time === time);
     if (!found) return 'available';
     if (found.status === 'unavailable' || found.status === 'cancelled') return 'unavailable';
@@ -382,6 +416,53 @@ const VetScheduleDialog: React.FC<Props> = ({
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label>Working days <span className="text-destructive">*</span></Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {DAY_NAMES.map((day, idx) => {
+                    const active = newVet.work_days.includes(idx);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => setNewVet(v => ({
+                          ...v,
+                          work_days: active ? v.work_days.filter(d => d !== idx) : [...v.work_days, idx],
+                        }))}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border smooth-transition ${
+                          active
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background text-muted-foreground border-border/60 hover:border-primary/40'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Start time <span className="text-destructive">*</span></Label>
+                  <Input
+                    type="time"
+                    value={newVet.work_start}
+                    onChange={e => setNewVet(v => ({ ...v, work_start: e.target.value }))}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>End time <span className="text-destructive">*</span></Label>
+                  <Input
+                    type="time"
+                    value={newVet.work_end}
+                    onChange={e => setNewVet(v => ({ ...v, work_end: e.target.value }))}
+                    className="rounded-xl"
+                  />
+                </div>
+              </div>
+
               <Button
                 onClick={handleSaveVet}
                 disabled={savingVet || !newVet.name.trim()}
@@ -399,7 +480,8 @@ const VetScheduleDialog: React.FC<Props> = ({
 
               {/* Month navigation */}
               <div className="flex items-center justify-between">
-                <button onClick={prevMonth} className="w-8 h-8 rounded-xl border border-border/50 flex items-center justify-center hover:bg-muted/60 smooth-transition">
+                <button onClick={prevMonth} disabled={isCurrentMonth}
+                  className="w-8 h-8 rounded-xl border border-border/50 flex items-center justify-center hover:bg-muted/60 smooth-transition disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <span className="font-semibold text-foreground capitalize">{monthLabel}</span>
@@ -408,9 +490,9 @@ const VetScheduleDialog: React.FC<Props> = ({
                 </button>
               </div>
 
-              {/* Week tabs */}
+              {/* Week tabs — apenas semanas com dias de hoje em diante */}
               <div className="flex gap-1.5 bg-muted/40 rounded-xl p-1">
-                {([1, 2, 3, 4] as Week[]).map(w => (
+                {visibleWeeks.map(w => (
                   <button
                     key={w}
                     onClick={() => setActiveWeek(w)}
@@ -439,7 +521,7 @@ const VetScheduleDialog: React.FC<Props> = ({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {weekRange.days.map(dateStr => {
+                  {weekRange.days.filter(d => d >= todayStr).map(dateStr => {
                     const dateObj = parseISO(dateStr + 'T00:00:00');
                     const dayName = DAY_NAMES[dateObj.getDay()];
                     const dayNum  = format(dateObj, 'd MMM', { locale: enUS });

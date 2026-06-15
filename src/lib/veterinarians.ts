@@ -22,6 +22,12 @@ export interface Veterinarian {
   service_type: ServiceType;
   specialties: string[];
   avatar_url?: string | null;
+  /** Dias da semana em que atende (0=domingo … 6=sábado). */
+  work_days: number[];
+  /** Início do expediente ('HH:MM'). */
+  work_start: string;
+  /** Fim do expediente ('HH:MM'). */
+  work_end: string;
   created_at: string;
 }
 
@@ -45,6 +51,9 @@ export interface CreateVetInput {
   crm?: string;
   service_type: ServiceType;
   specialties: string[];
+  work_days: number[];
+  work_start: string;
+  work_end: string;
 }
 
 export interface BookSlotInput {
@@ -66,6 +75,22 @@ export const DEFAULT_SLOTS: string[] = [
   '16:00','16:30','17:00','17:30',
 ];
 
+/* ── Working-hours check ─────────────────────────────────────────────── */
+
+/**
+ * Verifica se o veterinário atende no dia/horário informados,
+ * cruzando os dias da semana e o intervalo de expediente do cadastro.
+ */
+export function isVetWorking(
+  vet: Pick<Veterinarian, 'work_days' | 'work_start' | 'work_end'>,
+  dateStr: string,   // 'YYYY-MM-DD'
+  time: string,      // 'HH:MM'
+): boolean {
+  const dayOfWeek = new Date(`${dateStr}T12:00:00`).getDay();
+  if (!vet.work_days?.includes(dayOfWeek)) return false;
+  return time >= vet.work_start && time < vet.work_end;
+}
+
 /* ── Fetch all vets for a clinic ─────────────────────────────────────── */
 export async function fetchVeterinarians(clinicId: string): Promise<Veterinarian[]> {
   const { data, error } = await db
@@ -86,6 +111,15 @@ export async function createVeterinarian(input: CreateVetInput): Promise<Veterin
     .single();
   if (error) throw error;
   return data as Veterinarian;
+}
+
+/* ── Delete a vet ────────────────────────────────────────────────────── */
+export async function deleteVeterinarian(vetId: string): Promise<void> {
+  const { error } = await db
+    .from('veterinarians')
+    .delete()
+    .eq('id', vetId);
+  if (error) throw error;
 }
 
 /* ── Fetch appointments for a vet within a month ─────────────────────── */

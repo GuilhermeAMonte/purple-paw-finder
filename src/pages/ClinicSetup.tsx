@@ -6,14 +6,20 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Heart, Building2, Clock } from 'lucide-react';
+import { Heart, Building2, Clock, Stethoscope, Plus, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { CLINIC_SPECIALTIES, ANIMAL_TYPES } from '@/constants/specialties';
 import { clinicSetupSchema } from '@/schemas/clinic.schemas';
 import { getClinic, saveClinicSetup } from '@/lib/clinics';
 import { lookupCEP } from '@/lib/cep';
-import { Loader2 } from 'lucide-react';
+import { sanitizeLine } from '@/lib/sanitize';
+import {
+  fetchVeterinarians, createVeterinarian, deleteVeterinarian,
+  type Veterinarian,
+} from '@/lib/veterinarians';
+
+const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 const specialties = CLINIC_SPECIALTIES;
 const animalTypes = ANIMAL_TYPES;
@@ -40,10 +46,75 @@ const ClinicSetup = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  /* Veterinários da clínica (mínimo um para concluir o cadastro). */
+  const [vets, setVets] = useState<Veterinarian[]>([]);
+  const [newVet, setNewVet] = useState({
+    name: '', crm: '', work_days: [1, 2, 3, 4, 5] as number[], work_start: '08:00', work_end: '18:00',
+  });
+  const [savingVet, setSavingVet] = useState(false);
+
+  const handleAddVet = async () => {
+    if (!user?.id) return;
+    const name = sanitizeLine(newVet.name);
+    if (!name || name.length > 120) {
+      toast({ title: 'Informe o nome do veterinário', variant: 'destructive' });
+      return;
+    }
+    if (newVet.work_days.length === 0) {
+      toast({ title: 'Selecione ao menos um dia de atendimento', variant: 'destructive' });
+      return;
+    }
+    if (newVet.work_start >= newVet.work_end) {
+      toast({ title: 'Horário inválido', description: 'O início do expediente deve ser antes do fim.', variant: 'destructive' });
+      return;
+    }
+    setSavingVet(true);
+    try {
+      const created = await createVeterinarian({
+        clinic_id: user.id,
+        name,
+        crm: sanitizeLine(newVet.crm) || undefined,
+        service_type: 'in_person',
+        specialties: [],
+        work_days: newVet.work_days,
+        work_start: newVet.work_start,
+        work_end: newVet.work_end,
+      });
+      setVets(prev => [...prev, created]);
+      setNewVet({ name: '', crm: '', work_days: [1, 2, 3, 4, 5], work_start: '08:00', work_end: '18:00' });
+      toast({ title: 'Veterinário adicionado', description: created.name });
+    } catch (error) {
+      toast({
+        title: 'Erro ao adicionar veterinário',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingVet(false);
+    }
+  };
+
+  const handleRemoveVet = async (vet: Veterinarian) => {
+    try {
+      await deleteVeterinarian(vet.id);
+      setVets(prev => prev.filter(v => v.id !== vet.id));
+    } catch {
+      toast({
+        title: 'Não foi possível remover',
+        description: 'Este veterinário possui consultas vinculadas.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Pré-preencher com os dados já salvos da clínica (Req 11.7).
   useEffect(() => {
     if (!user?.id) return;
     let active = true;
+
+    fetchVeterinarians(user.id)
+      .then((data) => { if (active) setVets(data); })
+      .catch(() => { /* lista vazia */ });
 
     getClinic(user.id).then((clinic) => {
       if (!active || !clinic) return;
@@ -134,6 +205,15 @@ const ClinicSetup = () => {
       toast({
         title: "Verifique o formulário",
         description: firstError?.message ?? "Há campos inválidos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (vets.length === 0) {
+      toast({
+        title: "Cadastre um veterinário",
+        description: "Vincule ao menos um veterinário com seus dias e horários de atendimento.",
         variant: "destructive",
       });
       return;
@@ -399,6 +479,133 @@ const ClinicSetup = () => {
                       </Label>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* ── Veterinários (obrigatório ao menos um) ───────────── */}
+              <div className="space-y-3 pt-4 border-t border-purple-100">
+                <Label className="text-gray-700 flex items-center gap-2">
+                  <Stethoscope className="w-4 h-4 text-purple-600" />
+                  Veterinários da clínica * (cadastre pelo menos um)
+                </Label>
+                <p className="text-xs text-gray-400">
+                  Os dias e horários de atendimento de cada veterinário são usados para validar os agendamentos.
+                </p>
+
+                {/* Lista de vets cadastrados */}
+                {vets.length > 0 && (
+                  <div className="space-y-2">
+                    {vets.map(vet => (
+                      <div key={vet.id} className="flex items-center justify-between border border-purple-100 bg-purple-50/40 rounded-lg px-4 py-3">
+                        <div>
+                          <p className="font-medium text-sm text-gray-800">{vet.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {(vet.work_days ?? []).slice().sort((a, b) => a - b).map(d => DAY_LABELS[d]).join(', ')}
+                            {' '}· {vet.work_start}–{vet.work_end}
+                            {vet.crm ? ` · CRMV: ${vet.crm}` : ''}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveVet(vet)}
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Formulário de novo vet */}
+                <div className="border border-dashed border-purple-200 rounded-lg p-4 space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="vetName" className="text-gray-700 text-sm">Nome completo</Label>
+                      <Input
+                        id="vetName"
+                        value={newVet.name}
+                        onChange={e => setNewVet(v => ({ ...v, name: e.target.value }))}
+                        placeholder="Ex: Dra. Ana Souza"
+                        maxLength={120}
+                        className="border-purple-200 focus:border-purple-400"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="vetCrm" className="text-gray-700 text-sm">CRMV (opcional)</Label>
+                      <Input
+                        id="vetCrm"
+                        value={newVet.crm}
+                        onChange={e => setNewVet(v => ({ ...v, crm: e.target.value }))}
+                        placeholder="SP-12345"
+                        maxLength={20}
+                        className="border-purple-200 focus:border-purple-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-gray-700 text-sm">Dias de atendimento</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {DAY_LABELS.map((day, idx) => {
+                        const active = newVet.work_days.includes(idx);
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => setNewVet(v => ({
+                              ...v,
+                              work_days: active ? v.work_days.filter(d => d !== idx) : [...v.work_days, idx],
+                            }))}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                              active
+                                ? 'bg-purple-600 text-white border-purple-600'
+                                : 'bg-white text-gray-500 border-purple-200 hover:border-purple-400'
+                            }`}
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="vetStart" className="text-gray-700 text-sm">Início do expediente</Label>
+                      <Input
+                        id="vetStart"
+                        type="time"
+                        value={newVet.work_start}
+                        onChange={e => setNewVet(v => ({ ...v, work_start: e.target.value }))}
+                        className="border-purple-200 focus:border-purple-400"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="vetEnd" className="text-gray-700 text-sm">Fim do expediente</Label>
+                      <Input
+                        id="vetEnd"
+                        type="time"
+                        value={newVet.work_end}
+                        onChange={e => setNewVet(v => ({ ...v, work_end: e.target.value }))}
+                        className="border-purple-200 focus:border-purple-400"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAddVet}
+                    disabled={savingVet || !newVet.name.trim()}
+                    className="w-full border-purple-300 text-purple-700 hover:bg-purple-50"
+                  >
+                    {savingVet
+                      ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Adicionando…</>
+                      : <><Plus className="w-4 h-4 mr-2" />Adicionar veterinário</>}
+                  </Button>
                 </div>
               </div>
 
