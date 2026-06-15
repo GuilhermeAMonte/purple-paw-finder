@@ -62,24 +62,46 @@ function normalize(str: string): string {
     .replace(/\s+/g, ' ');
 }
 
-/** Busca todas as clínicas com perfil configurado (clinic_name preenchido). */
+/** Busca todas as clínicas com perfil configurado (clinic_name preenchido e pelo menos 1 especialidade). */
 export async function fetchClinics(): Promise<ClinicListItem[]> {
   const { data, error } = await supabase
     .from('clinics')
-    .select('*')
-    .not('clinic_name', 'is', null);
+    .select(`
+      id,
+      clinic_name,
+      rating,
+      review_count,
+      street,
+      number,
+      neighborhood,
+      city,
+      state,
+      specialties,
+      animal_types,
+      schedules,
+      is_24_hours,
+      is_emergency_available,
+      phone,
+      latitude,
+      longitude,
+      profiles!inner(is_profile_complete)
+    `)
+    .not('clinic_name', 'is', null)
+    .eq('profiles.is_profile_complete', true)
+    .order('rating', { ascending: false, nullsFirst: false })
+    .order('review_count', { ascending: false });
 
   if (error) {
     console.error('[clinicSearch] Erro ao buscar clínicas:', error.message);
     throw new Error('Não foi possível carregar as clínicas');
   }
 
-  return (data ?? []).map((c) => ({
+  return (data ?? []).map((c: any) => ({
     id: c.id,
     name: c.clinic_name ?? 'Clínica',
     rating: c.rating ?? 0,
     reviews: c.review_count ?? 0,
-    address: [c.street, c.neighborhood].filter(Boolean).join(' - ') || (c.city ?? ''),
+    address: [c.street, c.number].filter(Boolean).join(', '),
     city: c.city ?? '',
     state: c.state ?? '',
     neighborhood: c.neighborhood ?? '',

@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { EMAIL_ALREADY_REGISTERED } from '@/contexts/AuthContext';
 import { registerSchema } from '@/schemas/auth.schemas';
 import HCaptchaWidget from '@/components/HCaptchaWidget';
 import type HCaptcha from '@hcaptcha/react-hcaptcha';
@@ -67,7 +68,18 @@ const Register = () => {
 
     if (cep.length === 8) {
       try {
-        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const allowedDomains = ['viacep.com.br'];
+        const sanitizedCep = cep.replace(/[^0-9]/g, '');
+        const targetUrl = new URL(`https://viacep.com.br/ws/${sanitizedCep}/json/`);
+        const hostname = targetUrl.hostname;
+        if (
+          !allowedDomains.includes(hostname) ||
+          /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(hostname) ||
+          hostname === 'localhost'
+        ) {
+          throw new Error('Request blocked');
+        }
+        const response = await fetch(targetUrl.toString());
         const data = await response.json();
         
         if (!data.erro) {
@@ -125,9 +137,9 @@ const Register = () => {
       const newUser = await register(parsed.data.name, parsed.data.email, parsed.data.password, parsed.data.userType, parsed.data.plan, captchaToken || undefined);
 
       if (newUser) {
-        // Auto-login (confirmação de e-mail desativada): segue para o onboarding.
-        toast({ title: "Sucesso!", description: "Conta criada com sucesso." });
-        navigate('/clinic-dashboard');
+        // Auto-login (confirmação de e-mail desativada): segue para o setup da clínica.
+        toast({ title: "Sucesso!", description: "Conta criada com sucesso. Complete o cadastro da sua clínica." });
+        navigate('/clinic-setup');
       } else {
         // Confirmação de e-mail ativa: orienta o usuário a confirmar antes de entrar.
         toast({
@@ -139,6 +151,17 @@ const Register = () => {
     } catch (error) {
       captchaRef.current?.resetCaptcha();
       setCaptchaToken('');
+
+      // Se o e-mail já está cadastrado, redireciona para o login.
+      if (error instanceof Error && (error as any).code === EMAIL_ALREADY_REGISTERED) {
+        toast({
+          title: "Conta já existente",
+          description: "Esse e-mail já possui uma conta. Redirecionando para o login...",
+        });
+        navigate('/login');
+        return;
+      }
+
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : "Erro ao criar conta. Tente novamente.",

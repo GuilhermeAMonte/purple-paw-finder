@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { EMAIL_ALREADY_REGISTERED } from '@/contexts/AuthContext';
 import BreedSelector from '@/components/BreedSelector';
 import { supabase } from '@/lib/supabase';
 import HCaptchaWidget from '@/components/HCaptchaWidget';
@@ -75,7 +76,18 @@ const ClientRegister = () => {
 
     if (cep.length === 8) {
       try {
-        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const allowedDomains = ['viacep.com.br'];
+        const sanitizedCep = cep.replace(/[^0-9]/g, '');
+        const targetUrl = new URL(`https://viacep.com.br/ws/${sanitizedCep}/json/`);
+        const hostname = targetUrl.hostname;
+        if (
+          !allowedDomains.includes(hostname) ||
+          /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(hostname) ||
+          hostname === 'localhost'
+        ) {
+          throw new Error('Request blocked');
+        }
+        const response = await fetch(targetUrl.toString());
         const data = await response.json();
         
         if (!data.erro) {
@@ -164,6 +176,17 @@ const ClientRegister = () => {
     } catch (error) {
       captchaRef.current?.resetCaptcha();
       setCaptchaToken('');
+
+      // Se o e-mail já está cadastrado, redireciona para o login.
+      if (error instanceof Error && (error as any).code === EMAIL_ALREADY_REGISTERED) {
+        toast({
+          title: "Conta já existente",
+          description: "Esse e-mail já possui uma conta. Redirecionando para o login...",
+        });
+        navigate('/login');
+        return;
+      }
+
       toast({
         title: "Erro",
         description: error instanceof Error ? error.message : "Erro ao criar conta.",

@@ -37,11 +37,16 @@ export function ClientRoute({ children }: { children: React.ReactNode }) {
 /**
  * Protege rotas exclusivas de clínica.
  * Não autenticado → /login; autenticado mas não-clínica → /.
+ * Clínica sem perfil completo → /clinic-setup (exceto se já está nessa rota).
  */
 export function ClinicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading, user } = useAuth();
   if (loading) return <AuthLoading />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (user?.userType !== 'clinic') return <Navigate to="/" replace />;
+  // Se o perfil não está completo e não está na rota de setup, redireciona.
+  if (!user.isProfileComplete && window.location.pathname !== '/clinic-setup') {
+    return <Navigate to="/clinic-setup" replace />;
+  }
   return <>{children}</>;
 }

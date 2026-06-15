@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9333ea"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+  </defs>
+  <!-- Paw pads -->
+  <ellipse cx="10" cy="8" rx="3.2" ry="3.8" fill="url(#g)"/>
+  <ellipse cx="22" cy="8" rx="3.2" ry="3.8" fill="url(#g)"/>
+  <ellipse cx="5.5" cy="15" rx="2.8" ry="3.4" fill="url(#g)"/>
+  <ellipse cx="26.5" cy="15" rx="2.8" ry="3.4" fill="url(#g)"/>
+  <!-- Main pad -->
+  <path d="M9 22c0-4 3.5-7 7-7s7 3 7 7c0 3.5-2.5 7-7 7s-7-3.5-7-7z" fill="url(#g)"/>
+</svg>

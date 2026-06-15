@@ -23,7 +23,9 @@ const ClinicSetup = () => {
     clinicName: '',
     phone: '',
     cnpj: '',
-    address: '',
+    street: '',
+    number: '',
+    neighborhood: '',
     city: '',
     state: '',
     cep: '',
@@ -50,7 +52,9 @@ const ClinicSetup = () => {
         clinicName: clinic.clinic_name ?? prev.clinicName,
         phone: clinic.phone ?? prev.phone,
         cnpj: clinic.cnpj ?? prev.cnpj,
-        address: clinic.street ?? prev.address,
+        street: clinic.street ?? prev.street,
+        number: clinic.number ?? prev.number,
+        neighborhood: clinic.neighborhood ?? prev.neighborhood,
         city: clinic.city ?? prev.city,
         state: clinic.state ?? prev.state,
         cep: clinic.zip_code ?? prev.cep,
@@ -88,7 +92,8 @@ const ClinicSetup = () => {
         ...prev,
         state: result.state || prev.state,
         city: result.city || prev.city,
-        address: [result.street, result.neighborhood].filter(Boolean).join(', ') || prev.address,
+        street: result.street || prev.street,
+        neighborhood: result.neighborhood || prev.neighborhood,
       }));
     } else {
       toast({
@@ -252,17 +257,48 @@ const ClinicSetup = () => {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="street" className="text-gray-700">
+                    Rua / Avenida *
+                  </Label>
+                  <Input
+                    id="street"
+                    name="street"
+                    value={formData.street}
+                    onChange={handleInputChange}
+                    placeholder="Rua das Flores"
+                    required
+                    className="border-purple-200 focus:border-purple-400"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="number" className="text-gray-700">
+                    Número *
+                  </Label>
+                  <Input
+                    id="number"
+                    name="number"
+                    value={formData.number}
+                    onChange={handleInputChange}
+                    placeholder="123"
+                    required
+                    className="border-purple-200 focus:border-purple-400"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="address" className="text-gray-700">
-                  Endereço Completo *
+                <Label htmlFor="neighborhood" className="text-gray-700">
+                  Bairro
                 </Label>
                 <Input
-                  id="address"
-                  name="address"
-                  value={formData.address}
+                  id="neighborhood"
+                  name="neighborhood"
+                  value={formData.neighborhood}
                   onChange={handleInputChange}
-                  placeholder="Rua, número, bairro"
-                  required
+                  placeholder="Centro"
                   className="border-purple-200 focus:border-purple-400"
                 />
               </div>

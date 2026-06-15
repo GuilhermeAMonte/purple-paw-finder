@@ -11,7 +11,9 @@ export const clinicSetupSchema = z.object({
     .trim()
     .regex(/^\d{10,11}$/, 'Telefone deve ter 10 ou 11 dígitos (somente números)'),
   cnpj: z.string().refine(validateCNPJ, 'CNPJ inválido'),
-  address: z.string().trim().min(1, 'Informe o endereço').max(255).transform(sanitizeLine),
+  street: z.string().trim().min(1, 'Informe a rua').max(200).transform(sanitizeLine),
+  number: z.string().trim().min(1, 'Informe o número').max(20).transform(sanitizeLine),
+  neighborhood: z.string().trim().max(100).transform(sanitizeLine).optional().or(z.literal('')),
   city: z.string().trim().max(100).transform(sanitizeLine).optional().or(z.literal('')),
   state: z
     .string()
