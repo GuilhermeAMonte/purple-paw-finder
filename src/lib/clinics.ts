@@ -94,7 +94,7 @@ export async function saveClinicSetup(
     zipCode: data.cep,
   });
 
-  const { error: clinicError } = await supabase
+  const { data: updatedRows, error: clinicError } = await supabase
     .from('clinics')
     .update({
       clinic_name: data.clinicName,
@@ -114,11 +114,16 @@ export async function saveClinicSetup(
       latitude: geo?.latitude ?? null,
       longitude: geo?.longitude ?? null,
     })
-    .eq('id', clinicId);
+    .eq('id', clinicId)
+    .select();
 
   if (clinicError) {
     console.error('[clinics] Erro ao salvar setup:', clinicError.message);
     throw new Error(mapClinicSaveError(clinicError.message, clinicError.code));
+  }
+
+  if (!updatedRows || updatedRows.length === 0) {
+    throw new Error('Sua sessão expirou ou o perfil da clínica não foi encontrado. Faça logout e entre novamente.');
   }
 
   // Marca o perfil como completo.
