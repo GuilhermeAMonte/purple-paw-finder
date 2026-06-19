@@ -125,6 +125,7 @@ export type Database = {
           id: string
           is_24_hours: boolean
           is_emergency_available: boolean
+          is_listed: boolean
           latitude: number | null
           logo_url: string | null
           longitude: number | null
@@ -155,6 +156,7 @@ export type Database = {
           id: string
           is_24_hours?: boolean
           is_emergency_available?: boolean
+          is_listed?: boolean
           latitude?: number | null
           logo_url?: string | null
           longitude?: number | null
@@ -185,6 +187,7 @@ export type Database = {
           id?: string
           is_24_hours?: boolean
           is_emergency_available?: boolean
+          is_listed?: boolean
           latitude?: number | null
           logo_url?: string | null
           longitude?: number | null

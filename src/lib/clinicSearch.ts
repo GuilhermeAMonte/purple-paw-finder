@@ -85,8 +85,10 @@ export async function fetchClinics(): Promise<ClinicListItem[]> {
       latitude,
       longitude
     `)
-    // clinic_name só é gravado ao salvar o setup → já filtra clínicas incompletas.
-    // (Não embeda profiles: RLS de profiles bloqueia anon e zeraria a lista pública.)
+    // is_listed (coluna própria, sincronizada com profiles.is_profile_complete
+    // por trigger) → só clínicas com perfil completo aparecem. Sem embedar
+    // profiles, que o RLS anon bloquearia e zeraria a lista pública.
+    .eq('is_listed', true)
     .not('clinic_name', 'is', null)
     .order('rating', { ascending: false, nullsFirst: false })
     .order('review_count', { ascending: false });
