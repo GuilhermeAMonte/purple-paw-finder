@@ -594,6 +594,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      change_clinic_plan: {
+        Args: { p_plan: Database["public"]["Enums"]["plan_type"] }
+        Returns: Database["public"]["Enums"]["plan_type"]
+      }
       export_clinic_month_appointments: {
         Args: { p_year: number; p_month: number }
         Returns: {

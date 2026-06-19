@@ -32,7 +32,14 @@ import {
   type Ticket,
 } from '@/lib/tickets';
 import { supabase } from '@/lib/supabase';
-import { updateClinicProfile, getClinic } from '@/lib/clinics';
+import { updateClinicProfile, getClinic, changeClinicPlan } from '@/lib/clinics';
+
+type PlanKey = 'free' | 'basic' | 'intermediary' | 'experience';
+const PLAN_LABELS: Record<PlanKey, string> = {
+  free: 'Grátis', basic: 'Básico', intermediary: 'Intermediário', experience: 'Experience',
+};
+const PLAN_RANK: Record<PlanKey, number> = { free: 0, basic: 1, intermediary: 2, experience: 3 };
+const PLAN_ORDER: PlanKey[] = ['free', 'basic', 'intermediary', 'experience'];
 
 const SPECIALTIES = [
   'General Practice','Surgery','Cardiology','Dermatology','Ophthalmology',
@@ -158,6 +165,10 @@ const ClinicDashboard = () => {
   const [clinicName, setClinicName] = useState('');
   const [exporting, setExporting] = useState(false);
 
+  /* Plano da clínica */
+  const [clinicPlan, setClinicPlan] = useState<'free' | 'basic' | 'intermediary' | 'experience'>('free');
+  const [planChanging, setPlanChanging] = useState(false);
+
   /* Profile */
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileData, setProfileData] = useState({
@@ -194,6 +205,7 @@ const ClinicDashboard = () => {
     getClinic(clinicId).then((clinic) => {
       if (!active || !clinic) return;
       setClinicName(clinic.clinic_name ?? '');
+      if (clinic.plan) setClinicPlan(clinic.plan);
       setProfileData((prev) => ({
         ...prev,
         clinicName: clinic.clinic_name ?? prev.clinicName,
@@ -345,6 +357,28 @@ const ClinicDashboard = () => {
         description: error instanceof Error ? error.message : 'Não foi possível salvar as alterações. Tente novamente.',
         variant: 'destructive',
       });
+    }
+  };
+
+  /* ── Downgrade / cancelamento de plano ─────────────────────────── */
+  const handleChangePlan = async (plan: typeof clinicPlan) => {
+    if (plan === clinicPlan) return;
+    setPlanChanging(true);
+    try {
+      const applied = await changeClinicPlan(plan);
+      setClinicPlan(applied);
+      toast({
+        title: plan === 'free' ? 'Plano cancelado' : 'Plano alterado',
+        description: `Plano atual: ${PLAN_LABELS[applied]}.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro ao alterar plano',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setPlanChanging(false);
     }
   };
 
@@ -607,6 +641,40 @@ const ClinicDashboard = () => {
                   <Button onClick={handleProfileSave} className="w-full rounded-xl gradient-purple text-white hover:opacity-90">
                     Salvar Alterações
                   </Button>
+
+                  {/* Plano: downgrade / cancelamento */}
+                  <div className="space-y-2 pt-4 border-t border-border/40">
+                    <div className="flex items-center justify-between">
+                      <Label>Plano</Label>
+                      <span className="text-xs font-medium bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">
+                        {PLAN_LABELS[clinicPlan]}
+                      </span>
+                    </div>
+                    {PLAN_RANK[clinicPlan] === 0 ? (
+                      <p className="text-xs text-muted-foreground">Você está no plano gratuito.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">
+                          Downgrade ou cancelamento (upgrade exige pagamento). A mudança é imediata.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {PLAN_ORDER.filter(p => PLAN_RANK[p] < PLAN_RANK[clinicPlan]).map(p => (
+                            <Button
+                              key={p}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={planChanging}
+                              onClick={() => handleChangePlan(p)}
+                              className={`rounded-xl text-xs ${p === 'free' ? 'border-red-200 text-red-600 hover:bg-red-50' : ''}`}
+                            >
+                              {p === 'free' ? 'Cancelar plano (Grátis)' : `Mudar para ${PLAN_LABELS[p]}`}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
