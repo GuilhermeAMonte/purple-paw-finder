@@ -1,15 +1,12 @@
 /**
  * Veterinarians & Vet Appointments
  *
- * Uses a type-cast Supabase client because the new tables (veterinarians,
- * vet_appointments) are not yet reflected in the generated database.ts.
- * After running the migration and regenerating types, replace `db` with
- * the typed `supabase` client and remove the `as any` casts.
+ * Cliente Supabase tipado: as tabelas veterinarians/vet_appointments e a RPC
+ * export_clinic_month_appointments estão refletidas em database.ts.
  */
 import { supabase } from './supabase';
 
-// Untyped helper until DB types are regenerated
-const db = supabase as any;
+const db = supabase;
 
 export type ServiceType = 'in_person' | 'online' | 'both';
 export type SlotStatus  = 'booked' | 'unavailable' | 'cancelled';

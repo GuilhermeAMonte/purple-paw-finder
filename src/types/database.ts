@@ -294,7 +294,9 @@ export type Database = {
         Row: {
           address: string | null
           avatar_url: string | null
+          cpf: string | null
           created_at: string
+          email: string | null
           id: string
           is_profile_complete: boolean
           name: string
@@ -305,7 +307,9 @@ export type Database = {
         Insert: {
           address?: string | null
           avatar_url?: string | null
+          cpf?: string | null
           created_at?: string
+          email?: string | null
           id: string
           is_profile_complete?: boolean
           name: string
@@ -316,7 +320,9 @@ export type Database = {
         Update: {
           address?: string | null
           avatar_url?: string | null
+          cpf?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           is_profile_complete?: boolean
           name?: string
@@ -460,15 +466,151 @@ export type Database = {
           },
         ]
       }
+      vet_appointments: {
+        Row: {
+          clinic_id: string
+          created_at: string
+          date: string
+          id: string
+          patient_name: string | null
+          patient_notes: string | null
+          patient_pet: string | null
+          price: number | null
+          status: Database["public"]["Enums"]["slot_status_enum"]
+          ticket_id: string | null
+          time: string
+          vet_id: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string
+          date: string
+          id?: string
+          patient_name?: string | null
+          patient_notes?: string | null
+          patient_pet?: string | null
+          price?: number | null
+          status?: Database["public"]["Enums"]["slot_status_enum"]
+          ticket_id?: string | null
+          time: string
+          vet_id: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          patient_name?: string | null
+          patient_notes?: string | null
+          patient_pet?: string | null
+          price?: number | null
+          status?: Database["public"]["Enums"]["slot_status_enum"]
+          ticket_id?: string | null
+          time?: string
+          vet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vet_appointments_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vet_appointments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vet_appointments_vet_id_fkey"
+            columns: ["vet_id"]
+            isOneToOne: false
+            referencedRelation: "veterinarians"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      veterinarians: {
+        Row: {
+          avatar_url: string | null
+          clinic_id: string
+          created_at: string
+          crm: string | null
+          id: string
+          name: string
+          service_type: Database["public"]["Enums"]["service_type_enum"]
+          specialties: string[]
+          updated_at: string
+          work_days: number[]
+          work_end: string
+          work_start: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          clinic_id: string
+          created_at?: string
+          crm?: string | null
+          id?: string
+          name: string
+          service_type?: Database["public"]["Enums"]["service_type_enum"]
+          specialties?: string[]
+          updated_at?: string
+          work_days?: number[]
+          work_end?: string
+          work_start?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          clinic_id?: string
+          created_at?: string
+          crm?: string | null
+          id?: string
+          name?: string
+          service_type?: Database["public"]["Enums"]["service_type_enum"]
+          specialties?: string[]
+          updated_at?: string
+          work_days?: number[]
+          work_end?: string
+          work_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "veterinarians_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      export_clinic_month_appointments: {
+        Args: { p_year: number; p_month: number }
+        Returns: {
+          appt_date: string
+          appt_time: string
+          vet_name: string
+          price: number
+          pet_name: string
+          pet_breed: string
+          pet_species: string
+          tutor_name: string
+          tutor_cpf: string
+          tutor_email: string
+        }[]
+      }
     }
     Enums: {
       approval_status: "pending" | "approved" | "rejected"
+      service_type_enum: "in_person" | "online" | "both"
+      slot_status_enum: "booked" | "unavailable" | "cancelled"
       message_sender: "client" | "clinic" | "system"
       message_type: "text" | "system"
       plan_type: "free" | "basic" | "intermediary" | "experience"
