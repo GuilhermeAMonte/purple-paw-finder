@@ -22,6 +22,7 @@ interface AuthContextType {
     userType: UserType,
     plan?: PlanType,
     captchaToken?: string,
+    cpf?: string,
   ) => Promise<User | null>;
   logout: () => void;
   isAuthenticated: boolean;
@@ -184,6 +185,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userType: UserType,
     plan?: PlanType,
     captchaToken?: string,
+    cpf?: string,
   ): Promise<User | null> => {
     authActionInProgress.current = true;
     try {
@@ -198,6 +200,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             name,
             user_type: userType,
             plan: userType === 'clinic' ? plan : undefined,
+            cpf: cpf || undefined,
             consent_at: new Date().toISOString(),
             consent_version: '1.0',
           },

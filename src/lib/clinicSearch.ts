@@ -83,11 +83,11 @@ export async function fetchClinics(): Promise<ClinicListItem[]> {
       is_emergency_available,
       phone,
       latitude,
-      longitude,
-      profiles!inner(is_profile_complete)
+      longitude
     `)
+    // clinic_name só é gravado ao salvar o setup → já filtra clínicas incompletas.
+    // (Não embeda profiles: RLS de profiles bloqueia anon e zeraria a lista pública.)
     .not('clinic_name', 'is', null)
-    .eq('profiles.is_profile_complete', true)
     .order('rating', { ascending: false, nullsFirst: false })
     .order('review_count', { ascending: false });
 

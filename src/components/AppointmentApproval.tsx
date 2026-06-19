@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Calendar, Clock, User, PawPrint, CheckCircle, XCircle, MessageSquare, Stethoscope, Loader2, AlertCircle, Ban } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -40,12 +42,14 @@ const AppointmentApproval: React.FC<Props> = ({ appointments, onApprove, onRejec
   const [dayAppts, setDayAppts] = useState<VetAppointment[]>([]);
   const [loadingVets, setLoadingVets] = useState(false);
   const [selectedVetId, setSelectedVetId] = useState<string | null>(null);
+  const [priceInput, setPriceInput] = useState('');
   const [approving, setApproving] = useState(false);
 
   const openApprove = async (ticket: Ticket) => {
     if (!user?.id) return;
     setApproveTarget(ticket);
     setSelectedVetId(null);
+    setPriceInput('');
     setApproveOpen(true);
     setLoadingVets(true);
     try {
@@ -76,6 +80,12 @@ const AppointmentApproval: React.FC<Props> = ({ appointments, onApprove, onRejec
     const vet = vets.find(v => v.id === selectedVetId);
     if (!vet || vetAvailability(vet) !== 'available') return;
 
+    const priceNum = priceInput.trim() ? Number(priceInput.replace(',', '.')) : undefined;
+    if (priceNum !== undefined && (Number.isNaN(priceNum) || priceNum < 0)) {
+      toast({ title: 'Valor inválido', description: 'Informe um valor numérico (ex: 150,00).', variant: 'destructive' });
+      return;
+    }
+
     setApproving(true);
     try {
       await approveTicket(approveTarget.id);
@@ -89,6 +99,7 @@ const AppointmentApproval: React.FC<Props> = ({ appointments, onApprove, onRejec
         patient_name: approveTarget.client_name ?? 'Cliente',
         patient_pet: `${approveTarget.pet_name} (${approveTarget.pet_species})`,
         patient_notes: approveTarget.description,
+        price: priceNum,
       });
       await sendMessage(approveTarget.id, user.id, 'system',
         `✅ Agendamento confirmado para ${format(parseISO(approveTarget.scheduled_date), "d 'de' MMMM", { locale: ptBR })} às ${approveTarget.scheduled_time.slice(0, 5)} com ${vet.name}.`);
@@ -283,6 +294,20 @@ const AppointmentApproval: React.FC<Props> = ({ appointments, onApprove, onRejec
                     </button>
                   );
                 })}
+              </div>
+            )}
+
+            {vets.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                <Label htmlFor="apptPrice" className="text-sm">Valor da consulta (R$)</Label>
+                <Input
+                  id="apptPrice"
+                  inputMode="decimal"
+                  value={priceInput}
+                  onChange={e => setPriceInput(e.target.value)}
+                  placeholder="Ex: 150,00 (opcional)"
+                  className="rounded-xl"
+                />
               </div>
             )}
 
