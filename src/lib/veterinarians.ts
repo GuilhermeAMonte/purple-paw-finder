@@ -1,15 +1,12 @@
 /**
  * Veterinarians & Vet Appointments
  *
- * Uses a type-cast Supabase client because the new tables (veterinarians,
- * vet_appointments) are not yet reflected in the generated database.ts.
- * After running the migration and regenerating types, replace `db` with
- * the typed `supabase` client and remove the `as any` casts.
+ * Cliente Supabase tipado: as tabelas veterinarians/vet_appointments e a RPC
+ * export_clinic_month_appointments estão refletidas em database.ts.
  */
 import { supabase } from './supabase';
 
-// Untyped helper until DB types are regenerated
-const db = supabase as any;
+const db = supabase;
 
 export type ServiceType = 'in_person' | 'online' | 'both';
 export type SlotStatus  = 'booked' | 'unavailable' | 'cancelled';
@@ -42,6 +39,7 @@ export interface VetAppointment {
   patient_name?: string | null;
   patient_pet?: string | null;
   patient_notes?: string | null;
+  price?: number | null;
   created_at: string;
 }
 
@@ -66,6 +64,21 @@ export interface BookSlotInput {
   patient_name?: string;
   patient_pet?: string;
   patient_notes?: string;
+  price?: number;
+}
+
+/* ── Linha de exportação (consultas do mês) ─────────────────────────── */
+export interface ExportRow {
+  appt_date: string;
+  appt_time: string;
+  vet_name: string;
+  price: number | null;
+  pet_name: string | null;
+  pet_breed: string | null;
+  pet_species: string | null;
+  tutor_name: string | null;
+  tutor_cpf: string | null;
+  tutor_email: string | null;
 }
 
 /* ── Default time slots (30-min intervals 08:00–17:30) ──────────────── */
@@ -111,6 +124,16 @@ export async function createVeterinarian(input: CreateVetInput): Promise<Veterin
     .single();
   if (error) throw error;
   return data as Veterinarian;
+}
+
+/* ── Exporta consultas do mês (via RPC clinic-scoped) ────────────────── */
+export async function fetchMonthExport(year: number, month: number): Promise<ExportRow[]> {
+  const { data, error } = await db.rpc('export_clinic_month_appointments', {
+    p_year: year,
+    p_month: month,
+  });
+  if (error) throw error;
+  return (data ?? []) as ExportRow[];
 }
 
 /* ── Delete a vet ────────────────────────────────────────────────────── */

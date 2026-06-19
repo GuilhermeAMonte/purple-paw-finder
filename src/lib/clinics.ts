@@ -210,3 +210,16 @@ export async function saveClinicVisual(
     throw new Error('Não foi possível salvar a configuração visual');
   }
 }
+
+/**
+ * Downgrade/cancelamento de plano (cancelar = voltar para 'free').
+ * O RLS trava alteração direta de `plan`; usa o RPC que só permite rebaixar.
+ */
+export async function changeClinicPlan(plan: ClinicRow['plan']): Promise<ClinicRow['plan']> {
+  const { data, error } = await supabase.rpc('change_clinic_plan', { p_plan: plan });
+  if (error) {
+    console.error('[clinics] Erro ao alterar plano:', error.message);
+    throw new Error(error.message);
+  }
+  return data as ClinicRow['plan'];
+}

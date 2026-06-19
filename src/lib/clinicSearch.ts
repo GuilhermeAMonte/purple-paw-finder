@@ -83,11 +83,13 @@ export async function fetchClinics(): Promise<ClinicListItem[]> {
       is_emergency_available,
       phone,
       latitude,
-      longitude,
-      profiles!inner(is_profile_complete)
+      longitude
     `)
+    // is_listed (coluna própria, sincronizada com profiles.is_profile_complete
+    // por trigger) → só clínicas com perfil completo aparecem. Sem embedar
+    // profiles, que o RLS anon bloquearia e zeraria a lista pública.
+    .eq('is_listed', true)
     .not('clinic_name', 'is', null)
-    .eq('profiles.is_profile_complete', true)
     .order('rating', { ascending: false, nullsFirst: false })
     .order('review_count', { ascending: false });
 

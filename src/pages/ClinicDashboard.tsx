@@ -12,7 +12,7 @@ import {
   PawPrint, Phone, Users, MessageSquare, Settings, LogOut,
   Clock, Calendar, Send, UserCheck, AlertCircle, CheckSquare,
   BarChart2, Activity, ChevronLeft, ChevronRight,
-  Stethoscope, FileText, ExternalLink,
+  Stethoscope, FileText, ExternalLink, Download,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +24,7 @@ import {
   VetAppointment,
   fetchClinicAppointmentsByDate,
   fetchClinicMonthAppointments,
+  fetchMonthExport,
 } from '@/lib/veterinarians';
 import {
   fetchClinicTickets,
@@ -31,7 +32,14 @@ import {
   type Ticket,
 } from '@/lib/tickets';
 import { supabase } from '@/lib/supabase';
-import { updateClinicProfile } from '@/lib/clinics';
+import { updateClinicProfile, getClinic, changeClinicPlan } from '@/lib/clinics';
+
+type PlanKey = 'free' | 'basic' | 'intermediary' | 'experience';
+const PLAN_LABELS: Record<PlanKey, string> = {
+  free: 'Grátis', basic: 'Básico', intermediary: 'Intermediário', experience: 'Experience',
+};
+const PLAN_RANK: Record<PlanKey, number> = { free: 0, basic: 1, intermediary: 2, experience: 3 };
+const PLAN_ORDER: PlanKey[] = ['free', 'basic', 'intermediary', 'experience'];
 
 const SPECIALTIES = [
   'General Practice','Surgery','Cardiology','Dermatology','Ophthalmology',
@@ -56,10 +64,13 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-const KpiCard = ({ icon: Icon, label, value, color }: {
-  icon: React.ElementType; label: string; value: string | number; color: string;
+const KpiCard = ({ icon: Icon, label, value, color, onClick }: {
+  icon: React.ElementType; label: string; value: string | number; color: string; onClick?: () => void;
 }) => (
-  <div className="kpi-card animate-fade-in-up">
+  <div
+    onClick={onClick}
+    className={`kpi-card animate-fade-in-up ${onClick ? 'cursor-pointer hover:shadow-depth-md hover:-translate-y-0.5 smooth-transition' : ''}`}
+  >
     <div className="flex items-start justify-between mb-4">
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
         <Icon className="w-5 h-5" />
@@ -150,6 +161,14 @@ const ClinicDashboard = () => {
 
   const [scheduleDate, setScheduleDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
+  /* Nome da clínica (exibido no header) */
+  const [clinicName, setClinicName] = useState('');
+  const [exporting, setExporting] = useState(false);
+
+  /* Plano da clínica */
+  const [clinicPlan, setClinicPlan] = useState<'free' | 'basic' | 'intermediary' | 'experience'>('free');
+  const [planChanging, setPlanChanging] = useState(false);
+
   /* Profile */
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileData, setProfileData] = useState({
@@ -178,6 +197,27 @@ const ClinicDashboard = () => {
   }, [clinicId]);
 
   useEffect(() => { loadTickets(); }, [loadTickets]);
+
+  /* ── Load clinic name + seed profile form ──────────────────────── */
+  useEffect(() => {
+    if (!clinicId) return;
+    let active = true;
+    getClinic(clinicId).then((clinic) => {
+      if (!active || !clinic) return;
+      setClinicName(clinic.clinic_name ?? '');
+      if (clinic.plan) setClinicPlan(clinic.plan);
+      setProfileData((prev) => ({
+        ...prev,
+        clinicName: clinic.clinic_name ?? prev.clinicName,
+        phone:       clinic.phone ?? prev.phone,
+        address:     [clinic.street, clinic.number].filter(Boolean).join(', ') || prev.address,
+        description: clinic.description ?? prev.description,
+        is24Hours:   clinic.is_24_hours ?? prev.is24Hours,
+        specialties: clinic.specialties?.length ? clinic.specialties : prev.specialties,
+      }));
+    }).catch(() => { /* mantém header genérico */ });
+    return () => { active = false; };
+  }, [clinicId]);
 
   /* ── Realtime subscription for new/updated tickets ─────────────── */
   useEffect(() => {
@@ -320,6 +360,67 @@ const ClinicDashboard = () => {
     }
   };
 
+  /* ── Downgrade / cancelamento de plano ─────────────────────────── */
+  const handleChangePlan = async (plan: typeof clinicPlan) => {
+    if (plan === clinicPlan) return;
+    setPlanChanging(true);
+    try {
+      const applied = await changeClinicPlan(plan);
+      setClinicPlan(applied);
+      toast({
+        title: plan === 'free' ? 'Plano cancelado' : 'Plano alterado',
+        description: `Plano atual: ${PLAN_LABELS[applied]}.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro ao alterar plano',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setPlanChanging(false);
+    }
+  };
+
+  /* ── Exportar consultas do mês para planilha (CSV) ─────────────── */
+  const handleExportMonth = async () => {
+    if (!clinicId) return;
+    setExporting(true);
+    try {
+      const rows = await fetchMonthExport(calYear, calMonth);
+      if (rows.length === 0) {
+        toast({ title: 'Sem consultas', description: 'Nenhuma consulta neste mês para exportar.' });
+        return;
+      }
+      const headers = ['Data', 'Hora', 'Veterinário', 'Valor (R$)', 'Pet', 'Raça', 'Espécie', 'Tutor', 'CPF', 'E-mail'];
+      // Escapa aspas e envolve cada campo (evita quebra por ; ou vírgula nos dados).
+      const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const body = rows.map((r) => [
+        r.appt_date, r.appt_time, r.vet_name,
+        r.price != null ? Number(r.price).toFixed(2).replace('.', ',') : '',
+        r.pet_name, r.pet_breed, r.pet_species, r.tutor_name, r.tutor_cpf, r.tutor_email,
+      ].map(esc).join(';'));
+      // BOM + separador ';' → abre certo no Excel pt-BR.
+      const csv = '﻿' + [headers.map(esc).join(';'), ...body].join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `consultas-${calYear}-${String(calMonth).padStart(2, '0')}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: 'Planilha exportada', description: `${rows.length} consulta(s).` });
+    } catch (error) {
+      toast({
+        title: 'Erro ao exportar',
+        description: error instanceof Error ? error.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   /* ── New appointment booked ────────────────────────────────────── */
   const handleBooked = (appt: VetAppointment & { vet_name: string }) => {
     setMonthAppts(prev => [...prev, appt]);
@@ -338,7 +439,7 @@ const ClinicDashboard = () => {
   ];
 
   const kpis = [
-    { icon: BarChart2,   label: 'Consultas no mês',    value: allMonthAppts.length,    color: 'bg-violet-100 text-violet-600' },
+    { icon: BarChart2,   label: 'Consultas no mês',    value: allMonthAppts.length,    color: 'bg-violet-100 text-violet-600', onClick: () => setSection('calendario') },
     { icon: CheckSquare, label: 'Pendentes de aprovação', value: pendingTickets.length, color: 'bg-amber-100 text-amber-600' },
     { icon: Users,       label: 'Pacientes hoje',       value: todayAppts.length,       color: 'bg-blue-100 text-blue-600' },
     { icon: Activity,    label: 'Chamados abertos',     value: tickets.filter(t => t.status !== 'cancelled').length, color: 'bg-emerald-100 text-emerald-600' },
@@ -481,7 +582,7 @@ const ClinicDashboard = () => {
             </div>
             <div>
               <span className="text-[15px] font-semibold text-foreground">Paw<span className="text-primary">Connect</span></span>
-              <span className="hidden sm:inline text-xs text-muted-foreground ml-2">Dashboard</span>
+              <span className="hidden sm:inline text-xs text-muted-foreground ml-2">{clinicName || 'Dashboard'}</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -540,6 +641,40 @@ const ClinicDashboard = () => {
                   <Button onClick={handleProfileSave} className="w-full rounded-xl gradient-purple text-white hover:opacity-90">
                     Salvar Alterações
                   </Button>
+
+                  {/* Plano: downgrade / cancelamento */}
+                  <div className="space-y-2 pt-4 border-t border-border/40">
+                    <div className="flex items-center justify-between">
+                      <Label>Plano</Label>
+                      <span className="text-xs font-medium bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">
+                        {PLAN_LABELS[clinicPlan]}
+                      </span>
+                    </div>
+                    {PLAN_RANK[clinicPlan] === 0 ? (
+                      <p className="text-xs text-muted-foreground">Você está no plano gratuito.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">
+                          Downgrade ou cancelamento (upgrade exige pagamento). A mudança é imediata.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {PLAN_ORDER.filter(p => PLAN_RANK[p] < PLAN_RANK[clinicPlan]).map(p => (
+                            <Button
+                              key={p}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={planChanging}
+                              onClick={() => handleChangePlan(p)}
+                              className={`rounded-xl text-xs ${p === 'free' ? 'border-red-200 text-red-600 hover:bg-red-50' : ''}`}
+                            >
+                              {p === 'free' ? 'Cancelar plano (Grátis)' : `Mudar para ${PLAN_LABELS[p]}`}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
@@ -620,10 +755,17 @@ const ClinicDashboard = () => {
                 <div className="w-9 h-9 bg-violet-100 rounded-xl flex items-center justify-center">
                   <Calendar className="w-4 h-4 text-violet-600" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <h3 className="font-semibold text-foreground">Calendário</h3>
                   <p className="text-xs text-muted-foreground">{allMonthAppts.length} consulta(s) no mês</p>
                 </div>
+                <Button
+                  size="sm" variant="outline" onClick={handleExportMonth} disabled={exporting}
+                  className="rounded-xl text-xs h-9 border-violet-200 text-violet-700 hover:bg-violet-50"
+                >
+                  <Download className="w-3.5 h-3.5 mr-1.5" />
+                  {exporting ? 'Exportando…' : 'Exportar planilha'}
+                </Button>
               </div>
               <div className="flex justify-center p-6">
                 <CalendarComponent

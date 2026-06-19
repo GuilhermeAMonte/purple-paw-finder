@@ -23,6 +23,7 @@ const ClientRegister = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    cpf: '',
     password: '',
     confirmPassword: '',
     phone: '',
@@ -105,8 +106,12 @@ const ClientRegister = () => {
   };
 
   const validateStep1 = () => {
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (!formData.name || !formData.email || !formData.cpf || !formData.password || !formData.confirmPassword) {
       toast({ title: "Erro", description: "Preencha todos os campos.", variant: "destructive" });
+      return false;
+    }
+    if (formData.cpf.replace(/\D/g, '').length !== 11) {
+      toast({ title: "CPF inválido", description: "O CPF deve ter 11 dígitos.", variant: "destructive" });
       return false;
     }
     if (!isPasswordValid || !passwordsMatch) {
@@ -152,7 +157,7 @@ const ClientRegister = () => {
 
     setIsLoading(true);
     try {
-      const newUser = await register(formData.name, formData.email, formData.password, 'client', undefined, captchaToken || undefined);
+      const newUser = await register(formData.name, formData.email, formData.password, 'client', undefined, captchaToken || undefined, formData.cpf.replace(/\D/g, ''));
 
       if (newUser) {
         const weightNum = petData.weight ? parseFloat(String(petData.weight).replace(/[^\d.]/g, '')) || null : null;
@@ -264,6 +269,10 @@ const ClientRegister = () => {
                   <div className="space-y-2">
                     <Label htmlFor="email">E-mail</Label>
                     <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="maria@email.com" autoComplete="email" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cpf">CPF</Label>
+                    <Input id="cpf" name="cpf" inputMode="numeric" maxLength={14} value={formData.cpf} onChange={handleInputChange} placeholder="000.000.000-00" required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Senha</Label>
