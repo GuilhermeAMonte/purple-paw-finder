@@ -200,7 +200,6 @@ const FeaturedClinics = () => {
                     isOpen={clinic.isOpen}
                     image=""
                     emergency={clinic.emergency}
-                    phone={clinic.phone ?? undefined}
                   />
                 );
               })}

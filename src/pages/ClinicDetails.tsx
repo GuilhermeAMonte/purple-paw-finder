@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { getClinic } from '@/lib/clinics';
+import { getClinicPublic } from '@/lib/clinics';
 import { isClinicOpen } from '@/lib/clinicSearch';
 
 const WEEKDAY_LABELS: Array<[string, string]> = [
@@ -25,7 +25,7 @@ const ClinicDetails = () => {
 
   const { data: clinic, isLoading, isError } = useQuery({
     queryKey: ['clinic', id],
-    queryFn: () => getClinic(id!),
+    queryFn: () => getClinicPublic(id!),
     enabled: !!id,
   });
 

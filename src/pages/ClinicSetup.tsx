@@ -96,7 +96,7 @@ const ClinicSetup = () => {
 
   const handleRemoveVet = async (vet: Veterinarian) => {
     try {
-      await deleteVeterinarian(vet.id);
+      await deleteVeterinarian(vet.id, user!.id);
       setVets(prev => prev.filter(v => v.id !== vet.id));
     } catch {
       toast({

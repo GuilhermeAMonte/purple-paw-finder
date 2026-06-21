@@ -60,7 +60,10 @@ function mapClinicSaveError(message: string, code?: string): string {
   return 'Não foi possível salvar as alterações. Tente novamente em alguns instantes.';
 }
 
-/** Busca a clínica do usuário autenticado (para pré-preencher formulários). */
+/** Busca a clínica do usuário autenticado (para pré-preencher formulários).
+ *  Só retorna dados se auth.uid() === clinicId (enforced pela RLS).
+ *  Inclui PIIs como CNPJ — usar apenas no dashboard da clínica.
+ */
 export async function getClinic(clinicId: string): Promise<ClinicRow | null> {
   const { data, error } = await supabase
     .from('clinics')
@@ -73,6 +76,91 @@ export async function getClinic(clinicId: string): Promise<ClinicRow | null> {
     return null;
   }
   return data;
+}
+
+/**
+ * Dados públicos de uma clínica para a página de detalhes (qualquer
+ * usuário autenticado). Usa a RPC `get_clinic_public` que retorna dados
+ * não-sensíveis + phone (info de contato, não PII crítico) mas SEM CNPJ.
+ *
+ * Fallback: se a RPC não existir (ambiente sem a migration), busca da view
+ * pública ou da tabela com colunas específicas.
+ */
+export interface ClinicPublicDetails {
+  id: string;
+  clinic_name: string | null;
+  rating: number | null;
+  review_count: number;
+  street: string | null;
+  number: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  specialties: string[];
+  animal_types: string[];
+  schedules: unknown;
+  is_24_hours: boolean;
+  is_emergency_available: boolean;
+  latitude: number | null;
+  longitude: number | null;
+  description: string | null;
+  phone: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  primary_color: string | null;
+  services: string[];
+}
+
+export async function getClinicPublic(clinicId: string): Promise<ClinicPublicDetails | null> {
+  // Tenta via RPC (mais seguro, SECURITY DEFINER no banco).
+  const { data: rpcData, error: rpcError } = await supabase
+    .rpc('get_clinic_public', { p_clinic_id: clinicId });
+
+  if (!rpcError && rpcData && (rpcData as any[]).length > 0) {
+    return (rpcData as any[])[0] as ClinicPublicDetails;
+  }
+
+  // Fallback: busca diretamente com colunas seguras (sem CNPJ).
+  if (rpcError) {
+    console.warn('[clinics] RPC get_clinic_public indisponível, usando fallback.');
+  }
+
+  const { data, error } = await supabase
+    .from('clinics')
+    .select(`
+      id,
+      clinic_name,
+      rating,
+      review_count,
+      street,
+      number,
+      neighborhood,
+      city,
+      state,
+      specialties,
+      animal_types,
+      schedules,
+      is_24_hours,
+      is_emergency_available,
+      latitude,
+      longitude,
+      description,
+      phone,
+      logo_url,
+      cover_url,
+      primary_color,
+      services
+    `)
+    .eq('id', clinicId)
+    .eq('is_listed', true)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('[clinics] Falha ao carregar detalhes públicos da clínica');
+    return null;
+  }
+
+  return data as unknown as ClinicPublicDetails | null;
 }
 
 /**
