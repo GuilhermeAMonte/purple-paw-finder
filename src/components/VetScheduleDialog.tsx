@@ -140,7 +140,7 @@ const VetScheduleDialog: React.FC<Props> = ({
     if (!selectedVet) return;
     setLoadingSlots(true);
     try {
-      const data = await fetchVetAppointments(selectedVet.id, viewYear, viewMonth);
+      const data = await fetchVetAppointments(selectedVet.id, viewYear, viewMonth, clinicId);
       setAppointments(data);
     } catch {
       toast({ title: 'Error loading slots', description: 'Could not load schedule.', variant: 'destructive' });

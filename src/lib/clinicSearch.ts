@@ -26,7 +26,6 @@ export interface ClinicListItem {
   animalTypes: string[];
   isOpen: boolean;
   emergency: boolean;
-  phone: string | null;
   lat: number | null;
   lng: number | null;
 }
@@ -62,10 +61,21 @@ function normalize(str: string): string {
     .replace(/\s+/g, ' ');
 }
 
-/** Busca todas as clínicas com perfil configurado (clinic_name preenchido e pelo menos 1 especialidade). */
+/**
+ * Busca todas as clínicas listadas via view pública (sem PIIs como CNPJ ou
+ * telefone). A view `clinics_public` é SECURITY DEFINER e já filtra
+ * is_listed = true e clinic_name IS NOT NULL.
+ *
+ * Caso a view ainda não tenha sido criada no banco (ambiente de dev), faz
+ * fallback para a tabela `clinics` selecionando apenas colunas seguras.
+ */
 export async function fetchClinics(): Promise<ClinicListItem[]> {
-  const { data, error } = await supabase
-    .from('clinics')
+  // Tenta buscar da view pública (sem dados sensíveis).
+  let data: any[] | null = null;
+  let error: any = null;
+
+  const result = await supabase
+    .from('clinics_public' as any)
     .select(`
       id,
       clinic_name,
@@ -81,17 +91,46 @@ export async function fetchClinics(): Promise<ClinicListItem[]> {
       schedules,
       is_24_hours,
       is_emergency_available,
-      phone,
       latitude,
       longitude
     `)
-    // is_listed (coluna própria, sincronizada com profiles.is_profile_complete
-    // por trigger) → só clínicas com perfil completo aparecem. Sem embedar
-    // profiles, que o RLS anon bloquearia e zeraria a lista pública.
-    .eq('is_listed', true)
-    .not('clinic_name', 'is', null)
     .order('rating', { ascending: false, nullsFirst: false })
     .order('review_count', { ascending: false });
+
+  data = result.data;
+  error = result.error;
+
+  // Fallback: se a view não existir ainda, usa a tabela direta com colunas seguras.
+  if (error && (error.code === '42P01' || error.message?.includes('does not exist'))) {
+    console.warn('[clinicSearch] View clinics_public não encontrada, usando fallback na tabela clinics.');
+    const fallback = await supabase
+      .from('clinics')
+      .select(`
+        id,
+        clinic_name,
+        rating,
+        review_count,
+        street,
+        number,
+        neighborhood,
+        city,
+        state,
+        specialties,
+        animal_types,
+        schedules,
+        is_24_hours,
+        is_emergency_available,
+        latitude,
+        longitude
+      `)
+      .eq('is_listed', true)
+      .not('clinic_name', 'is', null)
+      .order('rating', { ascending: false, nullsFirst: false })
+      .order('review_count', { ascending: false });
+
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error) {
     console.error('[clinicSearch] Erro ao buscar clínicas:', error.message);
@@ -111,7 +150,6 @@ export async function fetchClinics(): Promise<ClinicListItem[]> {
     animalTypes: c.animal_types ?? [],
     isOpen: isClinicOpen(c.schedules, c.is_24_hours),
     emergency: c.is_emergency_available,
-    phone: c.phone,
     lat: c.latitude,
     lng: c.longitude,
   }));

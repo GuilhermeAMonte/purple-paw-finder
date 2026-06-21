@@ -12,7 +12,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import BreedSelector from '@/components/BreedSelector';
 import { supabase } from '@/lib/supabase';
-import { getClinic } from '@/lib/clinics';
+import { getClinicPublic } from '@/lib/clinics';
 import { createTicket } from '@/lib/tickets';
 import { validateReferralFile } from '@/utils/fileValidation';
 
@@ -63,7 +63,7 @@ const CreateTicket = () => {
   /* Load clinic */
   useEffect(() => {
     if (!clinicId) return;
-    getClinic(clinicId).then(clinic => {
+    getClinicPublic(clinicId).then(clinic => {
       if (clinic) {
         setClinicName(clinic.clinic_name ?? 'Clínica');
         setClinicServices(clinic.specialties ?? []);
