@@ -10,8 +10,9 @@
 // ============================================================================
 
 import { supabase } from './supabase';
+import type { SpeciesType } from '@/types/database';
 
-const db = supabase as any;
+const db = supabase;
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 export type TicketStatus   = 'pending' | 'confirmed' | 'cancelled';
@@ -138,7 +139,12 @@ export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
 
   const { data, error } = await db
     .from('tickets')
-    .insert({ ...input, approval_status: 'pending', status: 'pending' })
+    .insert({
+      ...input,
+      pet_species: input.pet_species as SpeciesType,
+      approval_status: 'pending',
+      status: 'pending',
+    })
     .select()
     .single();
   if (error) throw error;
