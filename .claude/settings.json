@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .appsec/appsec-gate.sh"
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \".appsec/appsec-gate.ps1\""
           }
         ]
       }
