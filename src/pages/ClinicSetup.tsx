@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Heart, Building2, Clock, Stethoscope, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Heart, Building2, Clock, Stethoscope, Plus, Trash2, Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { CLINIC_SPECIALTIES, ANIMAL_TYPES } from '@/constants/specialties';
@@ -48,6 +48,7 @@ const ClinicSetup = () => {
 
   /* Veterinários da clínica (mínimo um para concluir o cadastro). */
   const [vets, setVets] = useState<Veterinarian[]>([]);
+  const [vetsLoading, setVetsLoading] = useState(true);
   const [newVet, setNewVet] = useState({
     name: '', crm: '', work_days: [1, 2, 3, 4, 5] as number[], work_start: '08:00', work_end: '18:00',
   });
@@ -114,7 +115,8 @@ const ClinicSetup = () => {
 
     fetchVeterinarians(user.id)
       .then((data) => { if (active) setVets(data); })
-      .catch(() => { /* lista vazia */ });
+      .catch(() => { /* lista vazia */ })
+      .finally(() => { if (active) setVetsLoading(false); });
 
     getClinic(user.id).then((clinic) => {
       if (!active || !clinic) return;
@@ -559,11 +561,11 @@ const ClinicSetup = () => {
                               ...v,
                               work_days: active ? v.work_days.filter(d => d !== idx) : [...v.work_days, idx],
                             }))}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                              active
-                                ? 'bg-purple-600 text-white border-purple-600'
-                                : 'bg-white text-gray-500 border-purple-200 hover:border-purple-400'
-                            }`}
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors"
+                            style={active
+                              ? { backgroundColor: '#9333ea', color: '#ffffff', borderColor: '#9333ea' }
+                              : { backgroundColor: '#e5e7eb', color: '#6b7280', borderColor: '#d1d5db' }
+                            }
                           >
                             {day}
                           </button>
@@ -603,8 +605,8 @@ const ClinicSetup = () => {
                     className="w-full border-purple-300 text-purple-700 hover:bg-purple-50"
                   >
                     {savingVet
-                      ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Adicionando…</>
-                      : <><Plus className="w-4 h-4 mr-2" />Adicionar veterinário</>}
+                      ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Salvando…</>
+                      : <><Save className="w-4 h-4 mr-2" />Salvar veterinário</>}
                   </Button>
                 </div>
               </div>
@@ -612,9 +614,9 @@ const ClinicSetup = () => {
               <Button
                 type="submit"
                 className="w-full gradient-purple text-white hover:opacity-90 transition-opacity"
-                disabled={isLoading}
+                disabled={isLoading || vetsLoading}
               >
-                {isLoading ? "Salvando..." : "Configurar Clínica"}
+                {isLoading ? "Salvando..." : vetsLoading ? "Carregando..." : "Configurar Clínica"}
               </Button>
             </form>
           </CardContent>

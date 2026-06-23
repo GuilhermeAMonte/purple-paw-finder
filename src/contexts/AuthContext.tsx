@@ -188,6 +188,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     cpf?: string,
   ): Promise<User | null> => {
     authActionInProgress.current = true;
+    // Garante que nenhuma sessão anterior contamine o novo cadastro.
+    // Sem isso, signUp pode retornar a sessão do usuário já logado.
+    setUser(null);
+    await supabase.auth.signOut();
     try {
       // name/user_type/plan vão em metadata; o trigger handle_new_user() cria
       // as linhas em profiles (e clinics, se for clínica).
