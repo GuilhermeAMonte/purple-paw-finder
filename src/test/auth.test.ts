@@ -164,7 +164,7 @@ describe('AuthContext — register', () => {
   it('throws a generic error when signUp fails (no sensitive detail exposed)', async () => {
     mockSignUp.mockResolvedValue({
       data: { session: null, user: null },
-      error: { message: 'User already registered' },
+      error: { message: 'Database connection timeout' },
     });
 
     // Dynamically import to get a fresh module with the mock in place

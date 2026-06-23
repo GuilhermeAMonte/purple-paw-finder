@@ -1,9 +1,13 @@
-/**
- * Veterinarians & Vet Appointments
- *
- * Cliente Supabase tipado: as tabelas veterinarians/vet_appointments e a RPC
- * export_clinic_month_appointments estão refletidas em database.ts.
- */
+// ============================================================================
+// Veterinarians & Vet Appointments — Camada de acesso a dados
+// ----------------------------------------------------------------------------
+// Proteção IDOR:
+//   • Backend: RLS garante que somente a clínica dona (auth.uid() = clinic_id)
+//     pode ler/criar/editar/excluir veterinários e agendamentos.
+//   • Frontend: cada operação valida que o usuário autenticado é a clínica
+//     correspondente antes de enviar a request ao banco.
+// ============================================================================
+
 import { supabase } from './supabase';
 
 const db = supabase;
@@ -88,7 +92,27 @@ export const DEFAULT_SLOTS: string[] = [
   '16:00','16:30','17:00','17:30',
 ];
 
-/* ── Working-hours check ─────────────────────────────────────────────── */
+// ─── Helpers internos ────────────────────────────────────────────────────────
+
+/** Retorna o ID do usuário autenticado ou null se não há sessão. */
+async function getAuthUserId(): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
+/**
+ * Valida que o usuário autenticado é a clínica dona (clinicId === auth.uid).
+ * Lança erro se não corresponder — proteção contra IDOR.
+ */
+async function assertClinicOwner(clinicId: string): Promise<void> {
+  const userId = await getAuthUserId();
+  if (!userId) throw new Error('Sessão expirada. Faça login novamente.');
+  if (userId !== clinicId) {
+    throw new Error('Acesso negado: você não tem permissão para gerenciar recursos desta clínica.');
+  }
+}
+
+// ─── Working-hours check ─────────────────────────────────────────────────────
 
 /**
  * Verifica se o veterinário atende no dia/horário informados,
@@ -104,8 +128,12 @@ export function isVetWorking(
   return time >= vet.work_start && time < vet.work_end;
 }
 
+// ─── Veterinarians CRUD ──────────────────────────────────────────────────────
+
 /* ── Fetch all vets for a clinic ─────────────────────────────────────── */
 export async function fetchVeterinarians(clinicId: string): Promise<Veterinarian[]> {
+  await assertClinicOwner(clinicId);
+
   const { data, error } = await db
     .from('veterinarians')
     .select('*')
@@ -117,6 +145,8 @@ export async function fetchVeterinarians(clinicId: string): Promise<Veterinarian
 
 /* ── Create a new vet ────────────────────────────────────────────────── */
 export async function createVeterinarian(input: CreateVetInput): Promise<Veterinarian> {
+  await assertClinicOwner(input.clinic_id);
+
   const { data, error } = await db
     .from('veterinarians')
     .insert(input)
@@ -128,6 +158,10 @@ export async function createVeterinarian(input: CreateVetInput): Promise<Veterin
 
 /* ── Exporta consultas do mês (via RPC clinic-scoped) ────────────────── */
 export async function fetchMonthExport(year: number, month: number): Promise<ExportRow[]> {
+  // A RPC export_clinic_month_appointments já é scoped por auth.uid() internamente.
+  const userId = await getAuthUserId();
+  if (!userId) throw new Error('Sessão expirada. Faça login novamente.');
+
   const { data, error } = await db.rpc('export_clinic_month_appointments', {
     p_year: year,
     p_month: month,
@@ -137,20 +171,28 @@ export async function fetchMonthExport(year: number, month: number): Promise<Exp
 }
 
 /* ── Delete a vet ────────────────────────────────────────────────────── */
-export async function deleteVeterinarian(vetId: string): Promise<void> {
+export async function deleteVeterinarian(vetId: string, clinicId: string): Promise<void> {
+  await assertClinicOwner(clinicId);
+
   const { error } = await db
     .from('veterinarians')
     .delete()
-    .eq('id', vetId);
+    .eq('id', vetId)
+    .eq('clinic_id', clinicId); // Double-check: só deleta se pertence à clínica
   if (error) throw error;
 }
+
+// ─── Appointments ────────────────────────────────────────────────────────────
 
 /* ── Fetch appointments for a vet within a month ─────────────────────── */
 export async function fetchVetAppointments(
   vetId: string,
   year: number,
   month: number,  // 1-based
+  clinicId: string,
 ): Promise<VetAppointment[]> {
+  await assertClinicOwner(clinicId);
+
   const pad      = (n: number) => String(n).padStart(2, '0');
   const start    = `${year}-${pad(month)}-01`;
   const lastDay  = new Date(year, month, 0).getDate();
@@ -173,6 +215,8 @@ export async function fetchClinicAppointmentsByDate(
   clinicId: string,
   date: string,
 ): Promise<(VetAppointment & { vet_name: string })[]> {
+  await assertClinicOwner(clinicId);
+
   const { data, error } = await db
     .from('vet_appointments')
     .select('*, veterinarians(name)')
@@ -193,6 +237,8 @@ export async function fetchClinicMonthAppointments(
   year: number,
   month: number,
 ): Promise<(VetAppointment & { vet_name: string })[]> {
+  await assertClinicOwner(clinicId);
+
   const pad     = (n: number) => String(n).padStart(2, '0');
   const start   = `${year}-${pad(month)}-01`;
   const lastDay = new Date(year, month, 0).getDate();
@@ -216,6 +262,8 @@ export async function fetchClinicMonthAppointments(
 
 /* ── Book a slot ─────────────────────────────────────────────────────── */
 export async function bookVetSlot(input: BookSlotInput): Promise<VetAppointment> {
+  await assertClinicOwner(input.clinic_id);
+
   const { data, error } = await db
     .from('vet_appointments')
     .insert({ ...input, status: input.status ?? 'booked' })
@@ -226,15 +274,18 @@ export async function bookVetSlot(input: BookSlotInput): Promise<VetAppointment>
 }
 
 /* ── Cancel a slot ───────────────────────────────────────────────────── */
-export async function cancelVetSlot(slotId: string): Promise<void> {
+export async function cancelVetSlot(slotId: string, clinicId: string): Promise<void> {
+  await assertClinicOwner(clinicId);
+
   const { error } = await db
     .from('vet_appointments')
     .update({ status: 'cancelled' })
-    .eq('id', slotId);
+    .eq('id', slotId)
+    .eq('clinic_id', clinicId); // Double-check: só cancela se pertence à clínica
   if (error) throw error;
 }
 
-/* ── Week helpers ────────────────────────────────────────────────────── */
+// ─── Week helpers ────────────────────────────────────────────────────────────
 
 /** Returns which week of month (1–4) a date string belongs to */
 export function getWeekOfMonth(dateStr: string): 1 | 2 | 3 | 4 {

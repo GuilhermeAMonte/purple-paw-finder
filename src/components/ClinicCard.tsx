@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Star, MapPin, Phone, Heart, Clock, Zap } from 'lucide-react';
+import { Star, MapPin, Heart, Clock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
@@ -17,7 +17,6 @@ interface ClinicCardProps {
   isOpen: boolean;
   image: string;
   emergency?: boolean;
-  phone?: string;
 }
 
 const ClinicCard: React.FC<ClinicCardProps> = ({
@@ -31,7 +30,6 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
   isOpen,
   image,
   emergency = false,
-  phone,
 }) => {
   const navigate = useNavigate();
   const { toggleFavorite, isFavorite } = useFavorites();
@@ -45,11 +43,6 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     toggleFavorite(id);
-  };
-
-  const handlePhoneClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (phone) window.open(`tel:${phone}`, '_self');
   };
 
   /* Generate a consistent pastel gradient per clinic */
@@ -165,17 +158,6 @@ const ClinicCard: React.FC<ClinicCardProps> = ({
           >
             View details
           </Button>
-          {phone && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePhoneClick}
-              className="h-9 w-9 p-0 rounded-xl border-border/60 hover:border-primary/40 hover:bg-primary/5 smooth-transition"
-              aria-label="Call clinic"
-            >
-              <Phone className="w-3.5 h-3.5" />
-            </Button>
-          )}
         </div>
       </div>
     </div>

@@ -1,3 +1,14 @@
+// ============================================================================
+// Tickets & Chat — Camada de acesso a dados
+// ----------------------------------------------------------------------------
+// Proteção IDOR:
+//   • Backend: RLS garante que só participantes (user_id / clinic_id) podem
+//     ler e modificar tickets e mensagens.
+//   • Frontend: antes de cada mutation, verificamos que o usuário autenticado
+//     é participante legítimo. Isso evita requests desnecessários ao banco e
+//     dá feedback imediato ao usuário se algo estiver errado.
+// ============================================================================
+
 import { supabase } from './supabase';
 import type { SpeciesType } from '@/types/database';
 
@@ -57,9 +68,75 @@ export interface CreateTicketInput {
   is_emergency?: boolean;
 }
 
-/* ── Tickets ─────────────────────────────────────────────────────────────── */
+// ─── Helpers internos ────────────────────────────────────────────────────────
+
+/** Retorna o ID do usuário autenticado ou null se não há sessão. */
+async function getAuthUserId(): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
+/**
+ * Verifica se o usuário autenticado é participante (user_id ou clinic_id)
+ * do ticket. Lança erro se não for.
+ */
+async function assertTicketParticipant(ticketId: string): Promise<Ticket> {
+  const userId = await getAuthUserId();
+  if (!userId) throw new Error('Sessão expirada. Faça login novamente.');
+
+  const { data: ticket, error } = await db
+    .from('tickets')
+    .select('id, user_id, clinic_id, approval_status, status')
+    .eq('id', ticketId)
+    .maybeSingle();
+
+  if (error || !ticket) {
+    throw new Error('Ticket não encontrado ou acesso negado.');
+  }
+
+  if (ticket.user_id !== userId && ticket.clinic_id !== userId) {
+    throw new Error('Você não tem permissão para acessar este ticket.');
+  }
+
+  return ticket as Ticket;
+}
+
+/**
+ * Verifica que o usuário autenticado é a clínica dona do ticket.
+ * Necessário para approve/reject.
+ */
+async function assertTicketClinic(ticketId: string): Promise<Ticket> {
+  const userId = await getAuthUserId();
+  if (!userId) throw new Error('Sessão expirada. Faça login novamente.');
+
+  const { data: ticket, error } = await db
+    .from('tickets')
+    .select('id, user_id, clinic_id, approval_status, status')
+    .eq('id', ticketId)
+    .maybeSingle();
+
+  if (error || !ticket) {
+    throw new Error('Ticket não encontrado ou acesso negado.');
+  }
+
+  if (ticket.clinic_id !== userId) {
+    throw new Error('Apenas a clínica pode aprovar ou rejeitar este ticket.');
+  }
+
+  return ticket as Ticket;
+}
+
+// ─── Tickets ─────────────────────────────────────────────────────────────────
 
 export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
+  const userId = await getAuthUserId();
+  if (!userId) throw new Error('Sessão expirada. Faça login novamente.');
+
+  // Garante que o ticket é criado em nome do próprio usuário (anti-IDOR no INSERT)
+  if (input.user_id !== userId) {
+    throw new Error('Não é permitido criar tickets em nome de outro usuário.');
+  }
+
   const { data, error } = await db
     .from('tickets')
     .insert({
@@ -75,6 +152,12 @@ export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
 }
 
 export async function fetchClientTickets(userId: string): Promise<Ticket[]> {
+  // Valida que o caller está pedindo seus próprios tickets
+  const authId = await getAuthUserId();
+  if (!authId || authId !== userId) {
+    throw new Error('Acesso negado: não é possível listar tickets de outro usuário.');
+  }
+
   const { data, error } = await db
     .from('tickets')
     .select('*, clinics(clinic_name)')
@@ -88,6 +171,12 @@ export async function fetchClientTickets(userId: string): Promise<Ticket[]> {
 }
 
 export async function fetchClinicTickets(clinicId: string): Promise<Ticket[]> {
+  // Valida que a clínica está pedindo seus próprios tickets
+  const authId = await getAuthUserId();
+  if (!authId || authId !== clinicId) {
+    throw new Error('Acesso negado: não é possível listar tickets de outra clínica.');
+  }
+
   const { data, error } = await db
     .from('tickets')
     .select('*, profiles(name)')
@@ -101,6 +190,9 @@ export async function fetchClinicTickets(clinicId: string): Promise<Ticket[]> {
 }
 
 export async function approveTicket(ticketId: string): Promise<void> {
+  // Somente a clínica dona pode aprovar
+  await assertTicketClinic(ticketId);
+
   const { error } = await db
     .from('tickets')
     .update({ approval_status: 'approved', status: 'confirmed' })
@@ -109,6 +201,9 @@ export async function approveTicket(ticketId: string): Promise<void> {
 }
 
 export async function rejectTicket(ticketId: string, reason: string): Promise<void> {
+  // Somente a clínica dona pode rejeitar
+  await assertTicketClinic(ticketId);
+
   const { error } = await db
     .from('tickets')
     .update({ approval_status: 'rejected', status: 'cancelled', rejection_reason: reason })
@@ -117,6 +212,9 @@ export async function rejectTicket(ticketId: string, reason: string): Promise<vo
 }
 
 export async function cancelTicket(ticketId: string): Promise<void> {
+  // Qualquer participante (cliente ou clínica) pode cancelar
+  await assertTicketParticipant(ticketId);
+
   const { error } = await db
     .from('tickets')
     .update({ status: 'cancelled', approval_status: 'rejected' })
@@ -124,9 +222,12 @@ export async function cancelTicket(ticketId: string): Promise<void> {
   if (error) throw error;
 }
 
-/* ── Chat messages ────────────────────────────────────────────────────────── */
+// ─── Chat messages ───────────────────────────────────────────────────────────
 
 export async function fetchMessages(ticketId: string): Promise<ChatMessage[]> {
+  // Valida participação antes de buscar mensagens
+  await assertTicketParticipant(ticketId);
+
   const { data, error } = await db
     .from('chat_messages')
     .select('*')
@@ -142,6 +243,16 @@ export async function sendMessage(
   senderType: MessageSender,
   text: string,
 ): Promise<ChatMessage> {
+  // Valida participação e que o sender é o próprio usuário
+  const userId = await getAuthUserId();
+  if (!userId) throw new Error('Sessão expirada. Faça login novamente.');
+
+  if (senderType !== 'system' && senderId !== userId) {
+    throw new Error('Não é permitido enviar mensagens em nome de outro usuário.');
+  }
+
+  await assertTicketParticipant(ticketId);
+
   const { data, error } = await db
     .from('chat_messages')
     .insert({
@@ -161,6 +272,8 @@ export function subscribeToMessages(
   ticketId: string,
   onMessage: (msg: ChatMessage) => void,
 ) {
+  // Nota: a subscription do Realtime também é filtrada pela RLS no backend.
+  // Se o usuário não for participante, o canal não receberá eventos.
   return db
     .channel(`chat:${ticketId}`)
     .on('postgres_changes', {

@@ -35,6 +35,7 @@ const Chat = () => {
   const [firstMsgSent, setFirstMsgSent] = useState(false);
   const [clinicName, setClinicName] = useState('Clínica');
   const [clinicId, setClinicId] = useState<string | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   const endRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -42,25 +43,36 @@ const Chat = () => {
 
   const maxChars = isEmergency && !firstMsgSent ? 120 : 1000;
 
-  /* ── Load ticket + clinic name ──────────────────────────────────── */
+  /* ── Load ticket + validate participation (anti-IDOR) ───────────── */
   useEffect(() => {
-    if (!ticketId) return;
+    if (!ticketId || !user) return;
+
     (supabase as any)
       .from('tickets')
-      .select('clinic_id, clinics(clinic_name)')
+      .select('user_id, clinic_id, clinics(clinic_name)')
       .eq('id', ticketId)
       .single()
-      .then(({ data }: any) => {
-        if (data) {
-          setClinicName(data.clinics?.clinic_name ?? 'Clínica');
-          setClinicId(data.clinic_id);
+      .then(({ data, error }: any) => {
+        if (error || !data) {
+          // RLS blocked access or ticket doesn't exist
+          setAccessDenied(true);
+          return;
         }
-      });
-  }, [ticketId]);
 
-  /* ── Load history ───────────────────────────────────────────────── */
+        // Frontend double-check: user must be a participant
+        if (data.user_id !== user.id && data.clinic_id !== user.id) {
+          setAccessDenied(true);
+          return;
+        }
+
+        setClinicName(data.clinics?.clinic_name ?? 'Clínica');
+        setClinicId(data.clinic_id);
+      });
+  }, [ticketId, user]);
+
+  /* ── Load history (only after access verified) ───────────────────── */
   useEffect(() => {
-    if (!ticketId) return;
+    if (!ticketId || !clinicId || accessDenied) return;
     fetchMessages(ticketId).then(msgs => {
       if (msgs.length === 0) {
         const text = isEmergency ? INITIAL_EMERGENCY : INITIAL_MSG;
@@ -69,17 +81,19 @@ const Chat = () => {
         setMessages(msgs);
         setFirstMsgSent(msgs.some(m => m.sender_type === 'client'));
       }
+    }).catch(() => {
+      setAccessDenied(true);
     });
-  }, [ticketId, isEmergency]);
+  }, [ticketId, isEmergency, clinicId, accessDenied]);
 
-  /* ── Realtime subscription ──────────────────────────────────────── */
+  /* ── Realtime subscription (only after access verified) ───────────── */
   useEffect(() => {
-    if (!ticketId) return;
+    if (!ticketId || !clinicId || accessDenied) return;
     const channel = subscribeToMessages(ticketId, msg => {
       setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
     });
     return () => { (supabase as any).removeChannel(channel); };
-  }, [ticketId]);
+  }, [ticketId, clinicId, accessDenied]);
 
   /* ── Scroll to bottom ───────────────────────────────────────────── */
   const handleScroll = useCallback(() => {
@@ -135,6 +149,29 @@ const Chat = () => {
   const isOwn = (msg: ChatMessage) => userIsClinic
     ? msg.sender_type === 'clinic'
     : msg.sender_type === 'client';
+
+  // ── Acesso negado (IDOR blocked) ────────────────────────────────────────
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <div className="text-center max-w-sm">
+          <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+            <Ban className="w-7 h-7 text-red-500" />
+          </div>
+          <h1 className="text-xl font-semibold text-foreground mb-2">Acesso negado</h1>
+          <p className="text-muted-foreground text-sm mb-6">
+            Você não tem permissão para acessar esta conversa.
+          </p>
+          <Button
+            onClick={() => navigate(user?.userType === 'clinic' ? '/clinic-dashboard' : '/my-appointments')}
+            className="bg-primary text-white rounded-xl"
+          >
+            Voltar
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: isEmergency ? 'linear-gradient(to bottom, #fef2f2, #fff)' : 'hsl(var(--muted)/0.3)' }}>

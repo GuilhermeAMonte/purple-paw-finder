@@ -591,7 +591,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      clinics_public: {
+        Row: {
+          id: string
+          clinic_name: string | null
+          rating: number | null
+          review_count: number
+          street: string | null
+          number: string | null
+          neighborhood: string | null
+          city: string | null
+          state: string | null
+          specialties: string[]
+          animal_types: Database["public"]["Enums"]["species_type"][]
+          schedules: Json
+          is_24_hours: boolean
+          is_emergency_available: boolean
+          latitude: number | null
+          longitude: number | null
+          description: string | null
+          logo_url: string | null
+          cover_url: string | null
+          primary_color: string | null
+          services: string[]
+        }
+        Relationships: []
+      }
     }
     Functions: {
       change_clinic_plan: {
@@ -611,6 +636,33 @@ export type Database = {
           tutor_name: string
           tutor_cpf: string
           tutor_email: string
+        }[]
+      }
+      get_clinic_public: {
+        Args: { p_clinic_id: string }
+        Returns: {
+          id: string
+          clinic_name: string | null
+          rating: number | null
+          review_count: number
+          street: string | null
+          number: string | null
+          neighborhood: string | null
+          city: string | null
+          state: string | null
+          specialties: string[]
+          animal_types: string[]
+          schedules: Json
+          is_24_hours: boolean
+          is_emergency_available: boolean
+          latitude: number | null
+          longitude: number | null
+          description: string | null
+          phone: string | null
+          logo_url: string | null
+          cover_url: string | null
+          primary_color: string | null
+          services: string[]
         }[]
       }
     }
@@ -792,6 +844,7 @@ export type MessageType = Enums<'message_type'>
 
 export type ProfileRow = Tables<'profiles'>
 export type ClinicRow = Tables<'clinics'>
+export type ClinicPublicRow = Tables<'clinics_public'>
 export type PetRow = Tables<'pets'>
 export type TicketRow = Tables<'tickets'>
 export type ChatMessageRow = Tables<'chat_messages'>
