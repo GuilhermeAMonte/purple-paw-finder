@@ -33,7 +33,8 @@ BEGIN
 
   UPDATE public.tickets SET
     client_confirmation = 'confirmed',
-    approval_status     = 'approved'
+    approval_status     = 'approved',
+    status              = 'confirmed'
   WHERE id = p_ticket_id;
 
   INSERT INTO public.vet_appointments
