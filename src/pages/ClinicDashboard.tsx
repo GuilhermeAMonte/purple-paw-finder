@@ -440,8 +440,8 @@ const ClinicDashboard = () => {
 
   const kpis = [
     { icon: BarChart2,   label: 'Consultas no mês',    value: allMonthAppts.length,    color: 'bg-violet-100 text-violet-600', onClick: () => setSection('calendario') },
-    { icon: CheckSquare, label: 'Pendentes de aprovação', value: pendingTickets.length, color: 'bg-amber-100 text-amber-600' },
-    { icon: Users,       label: 'Pacientes hoje',       value: todayAppts.length,       color: 'bg-blue-100 text-blue-600' },
+    { icon: CheckSquare, label: 'Pendentes de aprovação', value: pendingTickets.length, color: 'bg-amber-100 text-amber-600', onClick: () => setSection('aprovacoes') },
+    { icon: Users,       label: 'Pacientes hoje',       value: todayAppts.length,       color: 'bg-blue-100 text-blue-600',  onClick: () => setSection('pacientes') },
     { icon: Activity,    label: 'Chamados abertos',     value: tickets.filter(t => t.status !== 'cancelled').length, color: 'bg-emerald-100 text-emerald-600' },
   ];
 
