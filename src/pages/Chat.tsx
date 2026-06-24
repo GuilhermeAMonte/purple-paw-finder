@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Send, Phone, MoreVertical, ShieldAlert, Ban, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
@@ -255,23 +255,30 @@ const Chat = () => {
               ⚠️ Primeira mensagem limitada a 120 caracteres
             </div>
           )}
-          <form onSubmit={handleSend} className="flex gap-2">
+          <form onSubmit={handleSend} className="flex gap-2 items-end">
             <div className="flex-1 relative">
-              <Input
+              <Textarea
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                placeholder={isEmergency && !firstMsgSent ? 'Descreva a emergência…' : 'Digite sua mensagem…'}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend(e as unknown as React.FormEvent);
+                  }
+                }}
+                placeholder={isEmergency && !firstMsgSent ? 'Descreva a emergência…' : 'Digite sua mensagem… (Shift+Enter para nova linha)'}
                 maxLength={maxChars}
-                className="h-11 rounded-xl pr-14 text-sm"
+                rows={1}
+                className="rounded-xl pr-14 text-sm resize-none min-h-[44px] max-h-32 overflow-y-auto"
               />
               {isEmergency && !firstMsgSent && (
-                <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-medium tabular-nums ${input.length > 110 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                <span className={`absolute right-3 bottom-3 text-[11px] font-medium tabular-nums ${input.length > 110 ? 'text-red-500' : 'text-muted-foreground'}`}>
                   {input.length}/120
                 </span>
               )}
             </div>
             <Button type="submit" disabled={!input.trim() || sending}
-              className={`h-11 w-11 p-0 rounded-xl text-white ${isEmergency ? 'bg-red-600 hover:bg-red-700' : 'gradient-purple hover:opacity-90'}`}>
+              className={`h-11 w-11 p-0 rounded-xl text-white flex-shrink-0 ${isEmergency ? 'bg-red-600 hover:bg-red-700' : 'gradient-purple hover:opacity-90'}`}>
               <Send className="w-4 h-4" />
             </Button>
           </form>

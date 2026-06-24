@@ -13,6 +13,7 @@ import {
   Clock, Calendar, Send, UserCheck, AlertCircle, CheckSquare,
   BarChart2, Activity, ChevronLeft, ChevronRight,
   Stethoscope, FileText, ExternalLink, Download,
+  Plus, Trash2, Star, Zap, Crown,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -21,10 +22,13 @@ import { enUS, ptBR } from 'date-fns/locale';
 import AppointmentApproval from '@/components/AppointmentApproval';
 import VetScheduleDialog from '@/components/VetScheduleDialog';
 import {
-  VetAppointment,
+  VetAppointment, Veterinarian, CreateVetInput,
   fetchClinicAppointmentsByDate,
   fetchClinicMonthAppointments,
   fetchMonthExport,
+  fetchVeterinarians,
+  createVeterinarian,
+  deleteVeterinarian,
 } from '@/lib/veterinarians';
 import {
   fetchClinicTickets,
@@ -46,6 +50,29 @@ const SPECIALTIES = [
   'Oncology','Orthopedics','Neurology','Emergency','Vaccination',
   'Laboratory Tests','Ultrasound','Radiology','Physiotherapy','Veterinary Dentistry',
 ];
+
+const PLAN_UPGRADE_BENEFITS: Record<PlanKey, { icon: React.ElementType; benefits: string[] }> = {
+  free:         { icon: Star,  benefits: [] },
+  basic:        { icon: Star,  benefits: ['Até 3 veterinários', 'Agenda online', 'Histórico 30 dias', 'Suporte por e-mail'] },
+  intermediary: { icon: Zap,   benefits: ['Até 10 veterinários', 'Relatórios mensais', 'Exportação CSV', 'Histórico 90 dias', 'Suporte prioritário'] },
+  experience:   { icon: Crown, benefits: ['Veterinários ilimitados', 'Analytics avançado', 'Exportação completa', 'Histórico permanente', 'Suporte dedicado 24h'] },
+};
+
+const PLAN_COLORS: Record<PlanKey, string> = {
+  free:         '',
+  basic:        'border-blue-200 bg-blue-50/50',
+  intermediary: 'border-violet-200 bg-violet-50/50',
+  experience:   'border-amber-200 bg-amber-50/50',
+};
+
+const PLAN_ICON_COLORS: Record<PlanKey, string> = {
+  free:         '',
+  basic:        'text-blue-600',
+  intermediary: 'text-violet-600',
+  experience:   'text-amber-500',
+};
+
+const WEEK_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 /* ── Sub-components ─────────────────────────────────────────────────── */
 const StatusBadge = ({ status }: { status: string }) => {
@@ -179,6 +206,15 @@ const ClinicDashboard = () => {
     is24Hours:  (user as any)?.is24Hours  || false,
     specialties:(user as any)?.specialties|| [],
   });
+
+  /* Settings — veterinários */
+  const [settingsVets, setSettingsVets] = useState<Veterinarian[]>([]);
+  const [settingsVetsLoading, setSettingsVetsLoading] = useState(false);
+  const [newVet, setNewVet] = useState<Omit<CreateVetInput, 'clinic_id'>>({
+    name: '', crm: '', service_type: 'in_person', specialties: [],
+    work_days: [1,2,3,4,5], work_start: '08:00', work_end: '18:00',
+  });
+  const [savingVet, setSavingVet] = useState(false);
 
   /* ── Load tickets ──────────────────────────────────────────────── */
   const loadTickets = useCallback(async () => {
@@ -357,6 +393,51 @@ const ClinicDashboard = () => {
         description: error instanceof Error ? error.message : 'Não foi possível salvar as alterações. Tente novamente.',
         variant: 'destructive',
       });
+    }
+  };
+
+  /* ── Veterinários nas configurações ────────────────────────────── */
+  useEffect(() => {
+    if (!profileOpen || !user?.id) return;
+    setSettingsVetsLoading(true);
+    fetchVeterinarians(user.id)
+      .then(setSettingsVets)
+      .catch(() => {})
+      .finally(() => setSettingsVetsLoading(false));
+  }, [profileOpen, user?.id]);
+
+  const handleAddSettingsVet = async () => {
+    if (!user?.id) return;
+    const name = newVet.name.trim();
+    if (!name || name.length > 120) {
+      toast({ title: 'Informe o nome do veterinário', variant: 'destructive' }); return;
+    }
+    if (newVet.work_days.length === 0) {
+      toast({ title: 'Selecione ao menos um dia de atendimento', variant: 'destructive' }); return;
+    }
+    if (newVet.work_start >= newVet.work_end) {
+      toast({ title: 'Horário inválido', description: 'Início deve ser antes do fim.', variant: 'destructive' }); return;
+    }
+    setSavingVet(true);
+    try {
+      const created = await createVeterinarian({ ...newVet, name, clinic_id: user.id });
+      setSettingsVets(prev => [...prev, created]);
+      setNewVet({ name: '', crm: '', service_type: 'in_person', specialties: [], work_days: [1,2,3,4,5], work_start: '08:00', work_end: '18:00' });
+      toast({ title: 'Veterinário adicionado', description: created.name });
+    } catch (error) {
+      toast({ title: 'Erro ao adicionar', description: error instanceof Error ? error.message : 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setSavingVet(false);
+    }
+  };
+
+  const handleRemoveSettingsVet = async (vet: Veterinarian) => {
+    if (!user?.id) return;
+    try {
+      await deleteVeterinarian(vet.id, user.id);
+      setSettingsVets(prev => prev.filter(v => v.id !== vet.id));
+    } catch {
+      toast({ title: 'Não foi possível remover', description: 'Veterinário pode ter consultas vinculadas.', variant: 'destructive' });
     }
   };
 
@@ -642,37 +723,145 @@ const ClinicDashboard = () => {
                     Salvar Alterações
                   </Button>
 
-                  {/* Plano: downgrade / cancelamento */}
-                  <div className="space-y-2 pt-4 border-t border-border/40">
+                  {/* Veterinários */}
+                  <div className="space-y-3 pt-4 border-t border-border/40">
+                    <Label className="text-sm font-semibold">Veterinários</Label>
+                    {settingsVetsLoading ? (
+                      <div className="space-y-2">
+                        {[0,1].map(i => <div key={i} className="h-10 skeleton rounded-xl" />)}
+                      </div>
+                    ) : (
+                      <>
+                        {settingsVets.length > 0 && (
+                          <div className="space-y-2">
+                            {settingsVets.map(v => (
+                              <div key={v.id} className="flex items-center justify-between px-3 py-2 bg-muted/40 rounded-xl">
+                                <div>
+                                  <p className="text-sm font-medium">{v.name}</p>
+                                  {v.crm && <p className="text-xs text-muted-foreground">CRM {v.crm}</p>}
+                                </div>
+                                <Button type="button" variant="ghost" size="sm"
+                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-red-600"
+                                  onClick={() => handleRemoveSettingsVet(v)}>
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="space-y-2 p-3 border border-dashed border-border rounded-xl">
+                          <p className="text-xs text-muted-foreground font-medium">Novo veterinário</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input placeholder="Nome *" value={newVet.name}
+                              onChange={e => setNewVet(p => ({ ...p, name: e.target.value }))}
+                              className="rounded-lg text-sm h-9" />
+                            <Input placeholder="CRM (opcional)" value={newVet.crm ?? ''}
+                              onChange={e => setNewVet(p => ({ ...p, crm: e.target.value }))}
+                              className="rounded-lg text-sm h-9" />
+                          </div>
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <p className="text-xs text-muted-foreground mb-1">Início</p>
+                              <Input type="time" value={newVet.work_start}
+                                onChange={e => setNewVet(p => ({ ...p, work_start: e.target.value }))}
+                                className="rounded-lg text-sm h-9" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-xs text-muted-foreground mb-1">Fim</p>
+                              <Input type="time" value={newVet.work_end}
+                                onChange={e => setNewVet(p => ({ ...p, work_end: e.target.value }))}
+                                className="rounded-lg text-sm h-9" />
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {WEEK_DAYS.map((d, i) => {
+                              const active = newVet.work_days.includes(i);
+                              return (
+                                <button key={i} type="button"
+                                  onClick={() => setNewVet(p => ({
+                                    ...p,
+                                    work_days: active ? p.work_days.filter(x => x !== i) : [...p.work_days, i],
+                                  }))}
+                                  className="px-2 py-1 rounded-md text-xs font-medium border transition-colors"
+                                  style={active
+                                    ? { backgroundColor: '#9333ea', color: '#ffffff', borderColor: '#9333ea' }
+                                    : { backgroundColor: '#e5e7eb', color: '#6b7280', borderColor: '#d1d5db' }}>
+                                  {d}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <Button type="button" size="sm" disabled={savingVet || !newVet.name.trim()}
+                            onClick={handleAddSettingsVet}
+                            className="w-full rounded-xl gradient-purple text-white hover:opacity-90 h-9">
+                            <Plus className="w-3.5 h-3.5 mr-1.5" />
+                            {savingVet ? 'Salvando…' : 'Salvar veterinário'}
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Plano: upgrade + downgrade */}
+                  <div className="space-y-3 pt-4 border-t border-border/40">
                     <div className="flex items-center justify-between">
-                      <Label>Plano</Label>
+                      <Label className="text-sm font-semibold">Plano</Label>
                       <span className="text-xs font-medium bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-0.5">
                         {PLAN_LABELS[clinicPlan]}
                       </span>
                     </div>
-                    {PLAN_RANK[clinicPlan] === 0 ? (
-                      <p className="text-xs text-muted-foreground">Você está no plano gratuito.</p>
-                    ) : (
+
+                    {/* Cards de upgrade */}
+                    {PLAN_ORDER.filter(p => PLAN_RANK[p] > PLAN_RANK[clinicPlan]).length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">
-                          Downgrade ou cancelamento (upgrade exige pagamento). A mudança é imediata.
-                        </p>
+                        <p className="text-xs text-muted-foreground font-medium">Faça upgrade e desbloqueie mais recursos:</p>
+                        {PLAN_ORDER.filter(p => PLAN_RANK[p] > PLAN_RANK[clinicPlan]).map(p => {
+                          const { icon: PlanIcon, benefits } = PLAN_UPGRADE_BENEFITS[p];
+                          return (
+                            <div key={p} className={`p-3 rounded-xl border ${PLAN_COLORS[p]} space-y-2`}>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <PlanIcon className={`w-4 h-4 ${PLAN_ICON_COLORS[p]}`} />
+                                  <span className={`text-sm font-semibold ${PLAN_ICON_COLORS[p]}`}>{PLAN_LABELS[p]}</span>
+                                </div>
+                                <Button type="button" size="sm"
+                                  className={`rounded-lg text-xs h-7 px-3 text-white ${p === 'basic' ? 'bg-blue-600 hover:bg-blue-700' : p === 'intermediary' ? 'gradient-purple hover:opacity-90' : 'bg-amber-500 hover:bg-amber-600'}`}
+                                  onClick={() => toast({ title: 'Em breve', description: 'Upgrade disponível em breve. Fale com o suporte.' })}>
+                                  Fazer upgrade
+                                </Button>
+                              </div>
+                              <ul className="space-y-0.5">
+                                {benefits.map(b => (
+                                  <li key={b} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                    <span className={`w-1 h-1 rounded-full flex-shrink-0 ${p === 'basic' ? 'bg-blue-500' : p === 'intermediary' ? 'bg-violet-500' : 'bg-amber-500'}`} />
+                                    {b}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Downgrade / cancelamento */}
+                    {PLAN_RANK[clinicPlan] > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">Downgrade ou cancelamento:</p>
                         <div className="flex flex-wrap gap-2">
                           {PLAN_ORDER.filter(p => PLAN_RANK[p] < PLAN_RANK[clinicPlan]).map(p => (
-                            <Button
-                              key={p}
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={planChanging}
+                            <Button key={p} type="button" variant="outline" size="sm" disabled={planChanging}
                               onClick={() => handleChangePlan(p)}
-                              className={`rounded-xl text-xs ${p === 'free' ? 'border-red-200 text-red-600 hover:bg-red-50' : ''}`}
-                            >
+                              className={`rounded-xl text-xs ${p === 'free' ? 'border-red-200 text-red-600 hover:bg-red-50' : ''}`}>
                               {p === 'free' ? 'Cancelar plano (Grátis)' : `Mudar para ${PLAN_LABELS[p]}`}
                             </Button>
                           ))}
                         </div>
                       </div>
+                    )}
+
+                    {PLAN_RANK[clinicPlan] === 0 && PLAN_ORDER.filter(p => PLAN_RANK[p] > 0).length === 0 && (
+                      <p className="text-xs text-muted-foreground">Você está no plano gratuito.</p>
                     )}
                   </div>
                 </div>
