@@ -13,6 +13,8 @@ import {
   fetchMessages,
   sendMessage as sendSupabaseMessage,
   subscribeToMessages,
+  clientConfirmAppointment,
+  clientCancelAppointment,
   type ChatMessage,
 } from '@/lib/tickets';
 import { supabase } from '@/lib/supabase';
@@ -37,6 +39,12 @@ const Chat = () => {
   const [clinicId, setClinicId] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
 
+  /* price confirmation flow */
+  const [clientConfirmation, setClientConfirmation] = useState<'pending' | 'confirmed' | 'cancelled' | null>(null);
+  const [pendingPrice, setPendingPrice] = useState<number | null>(null);
+  const [isClientUser, setIsClientUser] = useState(false);
+  const [confirmingAppt, setConfirmingAppt] = useState(false);
+
   const endRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
@@ -49,17 +57,15 @@ const Chat = () => {
 
     (supabase as any)
       .from('tickets')
-      .select('user_id, clinic_id, clinics(clinic_name)')
+      .select('user_id, clinic_id, client_confirmation, pending_price, clinics(clinic_name)')
       .eq('id', ticketId)
       .single()
       .then(({ data, error }: any) => {
         if (error || !data) {
-          // RLS blocked access or ticket doesn't exist
           setAccessDenied(true);
           return;
         }
 
-        // Frontend double-check: user must be a participant
         if (data.user_id !== user.id && data.clinic_id !== user.id) {
           setAccessDenied(true);
           return;
@@ -67,6 +73,9 @@ const Chat = () => {
 
         setClinicName(data.clinics?.clinic_name ?? 'Clínica');
         setClinicId(data.clinic_id);
+        setIsClientUser(data.user_id === user.id);
+        setClientConfirmation(data.client_confirmation ?? null);
+        setPendingPrice(data.pending_price ?? null);
       });
   }, [ticketId, user]);
 
@@ -127,6 +136,34 @@ const Chat = () => {
       toast({ title: 'Erro', description: 'Mensagem não enviada.', variant: 'destructive' });
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleConfirmAppointment = async () => {
+    if (!ticketId) return;
+    setConfirmingAppt(true);
+    try {
+      await clientConfirmAppointment(ticketId);
+      setClientConfirmation('confirmed');
+      toast({ title: 'Consulta confirmada!', description: 'Seu agendamento foi confirmado.' });
+    } catch {
+      toast({ title: 'Erro ao confirmar', description: 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setConfirmingAppt(false);
+    }
+  };
+
+  const handleCancelAppointment = async () => {
+    if (!ticketId) return;
+    setConfirmingAppt(true);
+    try {
+      await clientCancelAppointment(ticketId);
+      setClientConfirmation('cancelled');
+      toast({ title: 'Consulta cancelada', description: 'O agendamento foi cancelado.' });
+    } catch {
+      toast({ title: 'Erro ao cancelar', description: 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setConfirmingAppt(false);
     }
   };
 
@@ -255,6 +292,36 @@ const Chat = () => {
               ⚠️ Primeira mensagem limitada a 120 caracteres
             </div>
           )}
+
+          {/* Banner de confirmação de preço — visível só para o cliente */}
+          {clientConfirmation === 'pending' && isClientUser && (
+            <div className="mb-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+              <p className="text-sm font-semibold text-emerald-800">Proposta de agendamento recebida</p>
+              {pendingPrice != null && (
+                <p className="text-sm text-emerald-700">
+                  Valor da consulta:{' '}
+                  <span className="font-bold">R$ {pendingPrice.toFixed(2).replace('.', ',')}</span>
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={confirmingAppt}
+                  onClick={handleConfirmAppointment}
+                  className="flex-1 py-2 px-3 rounded-lg text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-60">
+                  {confirmingAppt ? 'Aguarde…' : '✅ Confirmar consulta'}
+                </button>
+                <button
+                  type="button"
+                  disabled={confirmingAppt}
+                  onClick={handleCancelAppointment}
+                  className="flex-1 py-2 px-3 rounded-lg text-sm font-medium bg-red-100 text-red-700 border border-red-200 hover:bg-red-200 transition-colors disabled:opacity-60">
+                  ❌ Cancelar consulta
+                </button>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSend} className="flex gap-2 items-end">
             <div className="flex-1 relative">
               <Textarea

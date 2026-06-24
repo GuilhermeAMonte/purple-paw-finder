@@ -6,9 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Calendar, Clock, User, PawPrint, CheckCircle, XCircle, MessageSquare, Stethoscope, Loader2, AlertCircle, Ban } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { approveTicket, rejectTicket, sendMessage, type Ticket } from '@/lib/tickets';
+import { proposeAppointmentPrice, rejectTicket, sendMessage, type Ticket } from '@/lib/tickets';
 import {
-  fetchVeterinarians, fetchClinicAppointmentsByDate, isVetWorking, bookVetSlot,
+  fetchVeterinarians, fetchClinicAppointmentsByDate, isVetWorking,
   type Veterinarian, type VetAppointment,
 } from '@/lib/veterinarians';
 import { format, parseISO } from 'date-fns';
@@ -88,26 +88,18 @@ const AppointmentApproval: React.FC<Props> = ({ appointments, onApprove, onRejec
 
     setApproving(true);
     try {
-      await approveTicket(approveTarget.id);
-      await bookVetSlot({
-        vet_id: vet.id,
-        clinic_id: user.id,
-        ticket_id: approveTarget.id,
-        date: approveTarget.scheduled_date,
-        time: approveTarget.scheduled_time.slice(0, 5),
-        status: 'booked',
-        patient_name: approveTarget.client_name ?? 'Cliente',
-        patient_pet: `${approveTarget.pet_name} (${approveTarget.pet_species})`,
-        patient_notes: approveTarget.description,
-        price: priceNum,
-      });
+      await proposeAppointmentPrice(approveTarget.id, vet.id, priceNum);
+
+      const priceText = priceNum != null
+        ? `R$ ${priceNum.toFixed(2).replace('.', ',')}`
+        : 'a combinar';
       await sendMessage(approveTarget.id, user.id, 'system',
-        `✅ Agendamento confirmado para ${format(parseISO(approveTarget.scheduled_date), "d 'de' MMMM", { locale: ptBR })} às ${approveTarget.scheduled_time.slice(0, 5)} com ${vet.name}.`);
-      onApprove(approveTarget.id);
+        `💰 A clínica definiu o valor da consulta: *${priceText}*.\n\nData: ${format(parseISO(approveTarget.scheduled_date), "d 'de' MMMM", { locale: ptBR })} às ${approveTarget.scheduled_time.slice(0, 5)} com ${vet.name}.\n\nConfirme ou cancele a consulta abaixo.`);
+
       setApproveOpen(false);
-      toast({ title: 'Agendamento aprovado', description: `${approveTarget.client_name} confirmado com ${vet.name}.` });
+      toast({ title: 'Proposta enviada', description: 'Aguardando confirmação do cliente.' });
     } catch {
-      toast({ title: 'Erro ao aprovar', variant: 'destructive' });
+      toast({ title: 'Erro ao enviar proposta', variant: 'destructive' });
     } finally {
       setApproving(false);
     }
@@ -164,9 +156,15 @@ const AppointmentApproval: React.FC<Props> = ({ appointments, onApprove, onRejec
                   <p className="text-xs text-muted-foreground">{ticket.service}</p>
                 </div>
               </div>
-              <span className="text-[11px] font-medium bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
-                Pendente
-              </span>
+              {ticket.client_confirmation === 'pending' ? (
+                <span className="text-[11px] font-medium bg-blue-100 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5">
+                  Aguardando cliente
+                </span>
+              ) : (
+                <span className="text-[11px] font-medium bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
+                  Pendente
+                </span>
+              )}
             </div>
 
             <div className="px-5 py-4 space-y-3">
@@ -195,8 +193,10 @@ const AppointmentApproval: React.FC<Props> = ({ appointments, onApprove, onRejec
 
               <div className="flex gap-2">
                 <Button onClick={() => openApprove(ticket)} size="sm"
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-9">
-                  <CheckCircle className="w-3.5 h-3.5 mr-1.5" />Aprovar
+                  disabled={ticket.client_confirmation === 'pending'}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-9 disabled:opacity-60">
+                  <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                  {ticket.client_confirmation === 'pending' ? 'Proposta enviada' : 'Aprovar'}
                 </Button>
                 <Button onClick={() => { setSelected(ticket); setRejectOpen(true); }} size="sm"
                   variant="outline" className="flex-1 border-red-200 text-red-600 hover:bg-red-50 rounded-xl text-xs h-9">
@@ -321,8 +321,8 @@ const AppointmentApproval: React.FC<Props> = ({ appointments, onApprove, onRejec
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
               >
                 {approving
-                  ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Aprovando…</>
-                  : <><CheckCircle className="w-4 h-4 mr-2" />Aprovar consulta</>}
+                  ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Enviando…</>
+                  : <><CheckCircle className="w-4 h-4 mr-2" />Enviar proposta ao cliente</>}
               </Button>
             </div>
           </div>

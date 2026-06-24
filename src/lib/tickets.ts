@@ -37,6 +37,10 @@ export interface Ticket {
   rejection_reason?: string | null;
   is_emergency: boolean;
   created_at: string;
+  // price confirmation flow
+  pending_vet_id?: string | null;
+  pending_price?: number | null;
+  client_confirmation?: 'pending' | 'confirmed' | 'cancelled' | null;
   // joined
   clinic_name?: string;
   client_name?: string;
@@ -219,6 +223,34 @@ export async function cancelTicket(ticketId: string): Promise<void> {
     .from('tickets')
     .update({ status: 'cancelled', approval_status: 'rejected' })
     .eq('id', ticketId);
+  if (error) throw error;
+}
+
+export async function proposeAppointmentPrice(
+  ticketId: string,
+  vetId: string,
+  price?: number,
+): Promise<void> {
+  await assertTicketClinic(ticketId);
+
+  const { error } = await db
+    .from('tickets')
+    .update({
+      pending_vet_id: vetId,
+      pending_price: price ?? null,
+      client_confirmation: 'pending',
+    })
+    .eq('id', ticketId);
+  if (error) throw error;
+}
+
+export async function clientConfirmAppointment(ticketId: string): Promise<void> {
+  const { error } = await db.rpc('client_confirm_appointment', { p_ticket_id: ticketId });
+  if (error) throw error;
+}
+
+export async function clientCancelAppointment(ticketId: string): Promise<void> {
+  const { error } = await db.rpc('client_cancel_appointment', { p_ticket_id: ticketId });
   if (error) throw error;
 }
 
