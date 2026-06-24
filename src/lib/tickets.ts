@@ -233,7 +233,7 @@ export async function proposeAppointmentPrice(
 ): Promise<void> {
   await assertTicketClinic(ticketId);
 
-  const { error } = await db
+  const { error } = await (db as any)
     .from('tickets')
     .update({
       pending_vet_id: vetId,
@@ -245,12 +245,12 @@ export async function proposeAppointmentPrice(
 }
 
 export async function clientConfirmAppointment(ticketId: string): Promise<void> {
-  const { error } = await db.rpc('client_confirm_appointment', { p_ticket_id: ticketId });
+  const { error } = await (db as any).rpc('client_confirm_appointment', { p_ticket_id: ticketId });
   if (error) throw error;
 }
 
 export async function clientCancelAppointment(ticketId: string): Promise<void> {
-  const { error } = await db.rpc('client_cancel_appointment', { p_ticket_id: ticketId });
+  const { error } = await (db as any).rpc('client_cancel_appointment', { p_ticket_id: ticketId });
   if (error) throw error;
 }
 

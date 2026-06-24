@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { fetchClientTickets, cancelTicket, type Ticket } from '@/lib/tickets';
+import { fetchClientTickets, cancelTicket, sendMessage, type Ticket } from '@/lib/tickets';
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -48,6 +48,7 @@ const MyAppointments = () => {
   const handleCancel = async (ticketId: string) => {
     try {
       await cancelTicket(ticketId);
+      await sendMessage(ticketId, '', 'system', '❌ O cliente cancelou a consulta agendada.');
       setTickets(prev => prev.filter(t => t.id !== ticketId));
       toast({ title: 'Agendamento cancelado' });
     } catch {

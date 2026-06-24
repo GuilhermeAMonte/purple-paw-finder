@@ -29,9 +29,11 @@ import {
   fetchVeterinarians,
   createVeterinarian,
   deleteVeterinarian,
+  cancelVetSlot,
 } from '@/lib/veterinarians';
 import {
   fetchClinicTickets,
+  cancelTicket,
   sendMessage as sendTicketMessage,
   type Ticket,
 } from '@/lib/tickets';
@@ -109,37 +111,39 @@ const KpiCard = ({ icon: Icon, label, value, color, onClick }: {
 );
 
 const AppointmentDetailModal = ({
-  appt, open, onClose,
+  appt, open, onClose, onCancel, cancelling,
 }: {
   appt: (VetAppointment & { vet_name?: string }) | null;
   open: boolean;
   onClose: () => void;
+  onCancel?: (appt: VetAppointment & { vet_name?: string }) => void;
+  cancelling?: boolean;
 }) => {
   if (!appt) return null;
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="text-base font-semibold">Appointment Details</DialogTitle>
+          <DialogTitle className="text-base font-semibold">Detalhes da Consulta</DialogTitle>
           <DialogDescription>
-            {appt.date ? format(parseISO(appt.date), 'EEEE, MMMM d, yyyy', { locale: enUS }) : ''} · {appt.time}
+            {appt.date ? format(parseISO(appt.date), "EEEE, d 'de' MMMM yyyy", { locale: ptBR }) : ''} · {appt.time}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 pt-1">
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-muted/40 rounded-xl p-3 border border-border/40">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Veterinarian</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Veterinário</p>
               <p className="font-semibold text-sm text-foreground">{appt.vet_name ?? '—'}</p>
             </div>
             <div className="bg-muted/40 rounded-xl p-3 border border-border/40">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Patient</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Paciente</p>
               <p className="font-semibold text-sm text-foreground">{appt.patient_name ?? '—'}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{appt.patient_pet ?? ''}</p>
             </div>
           </div>
           {appt.patient_notes && (
             <div className="bg-primary/5 border border-primary/15 rounded-xl p-3">
-              <p className="text-[10px] text-primary/70 uppercase tracking-wide mb-1.5">Patient notes</p>
+              <p className="text-[10px] text-primary/70 uppercase tracking-wide mb-1.5">Observações</p>
               <p className="text-sm text-foreground leading-relaxed">{appt.patient_notes}</p>
             </div>
           )}
@@ -147,6 +151,16 @@ const AppointmentDetailModal = ({
             <span>Status: <span className="font-medium text-emerald-600 capitalize">{appt.status}</span></span>
             {appt.ticket_id && <span>Ticket: {appt.ticket_id.slice(0, 8)}…</span>}
           </div>
+          {appt.status !== 'cancelled' && onCancel && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={cancelling}
+              onClick={() => onCancel(appt)}
+              className="w-full rounded-xl border-red-200 text-red-600 hover:bg-red-50 mt-1">
+              {cancelling ? 'Cancelando…' : '❌ Cancelar consulta'}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -185,6 +199,7 @@ const ClinicDashboard = () => {
   const [loadingAppts, setLoadingAppts] = useState(false);
   const [detailAppt, setDetailAppt] = useState<(VetAppointment & { vet_name?: string }) | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [cancellingAppt, setCancellingAppt] = useState(false);
 
   const [scheduleDate, setScheduleDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
@@ -215,6 +230,26 @@ const ClinicDashboard = () => {
     work_days: [1,2,3,4,5], work_start: '08:00', work_end: '18:00',
   });
   const [savingVet, setSavingVet] = useState(false);
+
+  /* ── Cancel appointment (clinic side) ─────────────────────────── */
+  const handleCancelAppt = async (appt: VetAppointment & { vet_name?: string }) => {
+    setCancellingAppt(true);
+    try {
+      await cancelVetSlot(appt.id, clinicId);
+      if (appt.ticket_id) {
+        await cancelTicket(appt.ticket_id);
+        await sendTicketMessage(appt.ticket_id, '', 'system', '❌ A clínica cancelou sua consulta.');
+      }
+      setDayAppts(prev => prev.map(a => a.id === appt.id ? { ...a, status: 'cancelled' } : a));
+      setMonthAppts(prev => prev.map(a => a.id === appt.id ? { ...a, status: 'cancelled' } : a));
+      setDetailOpen(false);
+      toast({ title: 'Consulta cancelada', description: 'O cliente foi notificado.' });
+    } catch {
+      toast({ title: 'Erro ao cancelar', variant: 'destructive' });
+    } finally {
+      setCancellingAppt(false);
+    }
+  };
 
   /* ── Load tickets ──────────────────────────────────────────────── */
   const loadTickets = useCallback(async () => {
@@ -1146,7 +1181,7 @@ const ClinicDashboard = () => {
         )}
       </div>
 
-      <AppointmentDetailModal appt={detailAppt} open={detailOpen} onClose={() => setDetailOpen(false)} />
+      <AppointmentDetailModal appt={detailAppt} open={detailOpen} onClose={() => setDetailOpen(false)} onCancel={handleCancelAppt} cancelling={cancellingAppt} />
     </div>
   );
 };
