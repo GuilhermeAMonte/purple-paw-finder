@@ -64,6 +64,18 @@ const Header = () => {
 
           {/* Right side */}
           <div className="flex items-center gap-2">
+            {isAuthenticated && user?.userType === 'client' && (
+              <Link to="/my-appointments">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center gap-1.5 h-9 px-3 rounded-xl text-sm font-medium hover:bg-primary/8 hover:text-primary smooth-transition"
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span className="hidden sm:inline">Agendamentos</span>
+                </Button>
+              </Link>
+            )}
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
