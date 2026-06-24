@@ -217,8 +217,8 @@ const MyAppointments = () => {
   };
 
   const byTab: Record<Tab, Ticket[]> = {
-    pending:   tickets.filter(t => t.approval_status === 'pending' && t.status !== 'cancelled'),
-    active:    tickets.filter(t => t.approval_status === 'approved' && t.status === 'confirmed'),
+    pending:   tickets.filter(t => t.approval_status === 'pending'  && t.status !== 'cancelled' && t.status !== 'completed'),
+    active:    tickets.filter(t => t.approval_status === 'approved' && t.status !== 'completed' && t.status !== 'cancelled'),
     completed: tickets.filter(t => t.status === 'completed'),
     rejected:  tickets.filter(t => t.approval_status === 'rejected' || t.status === 'cancelled'),
   };
