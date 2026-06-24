@@ -34,6 +34,7 @@ import {
 import {
   fetchClinicTickets,
   cancelTicket,
+  completeTicket,
   sendMessage as sendTicketMessage,
   type Ticket,
 } from '@/lib/tickets';
@@ -111,15 +112,17 @@ const KpiCard = ({ icon: Icon, label, value, color, onClick }: {
 );
 
 const AppointmentDetailModal = ({
-  appt, open, onClose, onCancel, cancelling,
+  appt, open, onClose, onCancel, cancelling, onComplete,
 }: {
   appt: (VetAppointment & { vet_name?: string }) | null;
   open: boolean;
   onClose: () => void;
   onCancel?: (appt: VetAppointment & { vet_name?: string }) => void;
   cancelling?: boolean;
+  onComplete?: (appt: VetAppointment & { vet_name?: string }) => void;
 }) => {
   if (!appt) return null;
+  const isCompleted = appt.status === 'completed';
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md rounded-2xl">
@@ -148,16 +151,29 @@ const AppointmentDetailModal = ({
             </div>
           )}
           <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-            <span>Status: <span className="font-medium text-emerald-600 capitalize">{appt.status}</span></span>
+            <span>Status:{' '}
+              {isCompleted
+                ? <span className="font-medium text-emerald-600">✅ Concluído</span>
+                : <span className="font-medium text-primary capitalize">{appt.status}</span>
+              }
+            </span>
             {appt.ticket_id && <span>Ticket: {appt.ticket_id.slice(0, 8)}…</span>}
           </div>
-          {appt.status !== 'cancelled' && onCancel && (
+          {!isCompleted && onComplete && appt.status === 'booked' && (
+            <Button
+              size="sm"
+              onClick={() => onComplete(appt)}
+              className="w-full rounded-xl gradient-purple text-white mt-1">
+              ✅ Concluir atendimento
+            </Button>
+          )}
+          {!isCompleted && appt.status !== 'cancelled' && onCancel && (
             <Button
               variant="outline"
               size="sm"
               disabled={cancelling}
               onClick={() => onCancel(appt)}
-              className="w-full rounded-xl border-red-200 text-red-600 hover:bg-red-50 mt-1">
+              className="w-full rounded-xl border-red-200 text-red-600 hover:bg-red-50">
               {cancelling ? 'Cancelando…' : '❌ Cancelar consulta'}
             </Button>
           )}
@@ -200,6 +216,14 @@ const ClinicDashboard = () => {
   const [detailAppt, setDetailAppt] = useState<(VetAppointment & { vet_name?: string }) | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [cancellingAppt, setCancellingAppt] = useState(false);
+
+  /* Completion dialog */
+  const [completionOpen, setCompletionOpen] = useState(false);
+  const [completionAppt, setCompletionAppt] = useState<(VetAppointment & { vet_name?: string }) | null>(null);
+  const [compFinalAmount, setCompFinalAmount] = useState('');
+  const [compSummary, setCompSummary] = useState('');
+  const [compProofUrl, setCompProofUrl] = useState('');
+  const [completing, setCompleting] = useState(false);
 
   const [scheduleDate, setScheduleDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
@@ -248,6 +272,53 @@ const ClinicDashboard = () => {
       toast({ title: 'Erro ao cancelar', variant: 'destructive' });
     } finally {
       setCancellingAppt(false);
+    }
+  };
+
+  /* ── Complete appointment (clinic side) ───────────────────────── */
+  const openCompletionDialog = (appt: VetAppointment & { vet_name?: string }) => {
+    setCompletionAppt(appt);
+    setCompFinalAmount('');
+    setCompSummary('');
+    setCompProofUrl('');
+    setDetailOpen(false);
+    setCompletionOpen(true);
+  };
+
+  const handleCompleteAppt = async () => {
+    if (!completionAppt?.ticket_id) return;
+    setCompleting(true);
+    try {
+      const amount = parseFloat(compFinalAmount.replace(',', '.'));
+      const data = {
+        finalAmount:      isNaN(amount) ? undefined : amount,
+        treatmentSummary: compSummary.trim()   || undefined,
+        paymentProofUrl:  compProofUrl.trim()  || undefined,
+      };
+
+      await completeTicket(completionAppt.ticket_id, data);
+
+      const lines: string[] = ['✅ Atendimento concluído!'];
+      if (data.finalAmount != null)
+        lines.push(`\n💰 Valor cobrado: R$ ${data.finalAmount.toFixed(2).replace('.', ',')}`);
+      if (data.treatmentSummary)
+        lines.push(`\n📋 Resumo do atendimento:\n${data.treatmentSummary}`);
+      lines.push(`\n🧾 Comprovante: ${data.paymentProofUrl ?? 'Não informado'}`);
+
+      await sendTicketMessage(completionAppt.ticket_id, '', 'system', lines.join(''));
+
+      const markDone = (prev: (VetAppointment & { vet_name: string })[]) =>
+        prev.map(a => a.id === completionAppt.id ? { ...a, status: 'completed' as const } : a);
+      setDayAppts(markDone);
+      setMonthAppts(markDone);
+
+      setCompletionOpen(false);
+      setCompletionAppt(null);
+      toast({ title: 'Atendimento concluído', description: 'O cliente foi notificado.' });
+    } catch {
+      toast({ title: 'Erro ao concluir atendimento', variant: 'destructive' });
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -1181,7 +1252,85 @@ const ClinicDashboard = () => {
         )}
       </div>
 
-      <AppointmentDetailModal appt={detailAppt} open={detailOpen} onClose={() => setDetailOpen(false)} onCancel={handleCancelAppt} cancelling={cancellingAppt} />
+      <AppointmentDetailModal
+        appt={detailAppt}
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        onCancel={handleCancelAppt}
+        cancelling={cancellingAppt}
+        onComplete={openCompletionDialog}
+      />
+
+      {/* ── Completion Dialog ──────────────────────────────────────── */}
+      <Dialog open={completionOpen} onOpenChange={v => !v && setCompletionOpen(false)}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Concluir Atendimento</DialogTitle>
+            <DialogDescription>
+              {completionAppt?.patient_name} · {completionAppt?.date ? format(parseISO(completionAppt.date), "d 'de' MMMM", { locale: ptBR }) : ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="comp-amount" className="text-sm font-medium">Valor cobrado (R$)</Label>
+              <Input
+                id="comp-amount"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Ex: 150,00"
+                value={compFinalAmount}
+                onChange={e => setCompFinalAmount(e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="comp-summary" className="text-sm font-medium">Resumo do atendimento</Label>
+              <Textarea
+                id="comp-summary"
+                placeholder="Descreva o procedimento realizado, diagnóstico, medicações prescritas…"
+                value={compSummary}
+                onChange={e => setCompSummary(e.target.value)}
+                rows={4}
+                maxLength={5000}
+                className="rounded-xl resize-none"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="comp-proof" className="text-sm font-medium">
+                Link do comprovante de pagamento <span className="text-muted-foreground font-normal">(opcional)</span>
+              </Label>
+              <Input
+                id="comp-proof"
+                type="url"
+                placeholder="https://…"
+                value={compProofUrl}
+                onChange={e => setCompProofUrl(e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-xl"
+                onClick={() => setCompletionOpen(false)}
+                disabled={completing}>
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 rounded-xl gradient-purple text-white"
+                onClick={handleCompleteAppt}
+                disabled={completing}>
+                {completing ? 'Salvando…' : '✅ Confirmar conclusão'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

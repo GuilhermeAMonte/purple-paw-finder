@@ -15,7 +15,7 @@ import type { SpeciesType } from '@/types/database';
 const db = supabase;
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
-export type TicketStatus   = 'pending' | 'confirmed' | 'cancelled';
+export type TicketStatus   = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 export type MessageSender  = 'client' | 'clinic' | 'system';
 
 export interface Ticket {
@@ -41,6 +41,11 @@ export interface Ticket {
   pending_vet_id?: string | null;
   pending_price?: number | null;
   client_confirmation?: 'pending' | 'confirmed' | 'cancelled' | null;
+  // completion
+  completed_at?: string | null;
+  final_amount?: number | null;
+  treatment_summary?: string | null;
+  payment_proof_url?: string | null;
   // joined
   clinic_name?: string;
   client_name?: string;
@@ -252,6 +257,32 @@ export async function clientConfirmAppointment(ticketId: string): Promise<void> 
 export async function clientCancelAppointment(ticketId: string): Promise<void> {
   const { error } = await (db as any).rpc('client_cancel_appointment', { p_ticket_id: ticketId });
   if (error) throw error;
+}
+
+export async function completeTicket(
+  ticketId: string,
+  data: { finalAmount?: number; treatmentSummary?: string; paymentProofUrl?: string },
+): Promise<void> {
+  await assertTicketClinic(ticketId);
+
+  const { error } = await (db as any)
+    .from('tickets')
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      final_amount: data.finalAmount ?? null,
+      treatment_summary: data.treatmentSummary ?? null,
+      payment_proof_url: data.paymentProofUrl ?? null,
+    })
+    .eq('id', ticketId);
+  if (error) throw error;
+
+  // Best-effort: mark linked vet_appointment as completed
+  await (db as any)
+    .from('vet_appointments')
+    .update({ status: 'completed' })
+    .eq('ticket_id', ticketId)
+    .neq('status', 'cancelled');
 }
 
 // ─── Chat messages ───────────────────────────────────────────────────────────
