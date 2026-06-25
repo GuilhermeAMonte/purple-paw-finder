@@ -239,14 +239,23 @@ export async function rejectTicket(ticketId: string, reason: string): Promise<vo
 }
 
 export async function cancelTicket(ticketId: string): Promise<void> {
-  // Qualquer participante (cliente ou clínica) pode cancelar
-  await assertTicketParticipant(ticketId);
+  const userId = await getAuthUserId();
+  if (!userId) throw new Error('Sessão expirada. Faça login novamente.');
 
-  const { error } = await db
-    .from('tickets')
-    .update({ status: 'cancelled', approval_status: 'rejected' })
-    .eq('id', ticketId);
-  if (error) throw error;
+  const ticket = await assertTicketParticipant(ticketId);
+
+  if (ticket.user_id === userId) {
+    // Cliente: usa SECURITY DEFINER RPC — evita UPDATE direto sem restrição de coluna
+    const { error } = await (db as any).rpc('cancel_ticket', { p_ticket_id: ticketId });
+    if (error) throw error;
+  } else {
+    // Clínica: UPDATE direto coberto pela policy "tickets: clinic updates"
+    const { error } = await db
+      .from('tickets')
+      .update({ status: 'cancelled', approval_status: 'rejected' })
+      .eq('id', ticketId);
+    if (error) throw error;
+  }
 }
 
 export async function proposeAppointmentPrice(
