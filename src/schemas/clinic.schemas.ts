@@ -3,6 +3,12 @@ import { CLINIC_SPECIALTIES, ANIMAL_TYPE_VALUES } from '@/constants/specialties'
 import { validateCNPJ } from '@/lib/cnpj';
 import { sanitizeLine, sanitizeMultiline } from '@/lib/sanitize';
 
+export const VALID_UFS = [
+  'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
+  'MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN',
+  'RS','RO','RR','SC','SP','SE','TO',
+] as const;
+
 // Schema de configuração inicial da clínica (Req 11.1).
 export const clinicSetupSchema = z.object({
   clinicName: z.string().trim().min(1, 'Informe o nome da clínica').max(100).transform(sanitizeLine),
@@ -14,16 +20,29 @@ export const clinicSetupSchema = z.object({
   street: z.string().trim().min(1, 'Informe a rua').max(200).transform(sanitizeLine),
   number: z.string().trim().min(1, 'Informe o número').max(20).transform(sanitizeLine),
   neighborhood: z.string().trim().max(100).transform(sanitizeLine).optional().or(z.literal('')),
-  city: z.string().trim().max(100).transform(sanitizeLine).optional().or(z.literal('')),
+  city: z.string().trim().min(2, 'Informe a cidade').max(100).transform(sanitizeLine).optional().or(z.literal('')),
   state: z
     .string()
     .trim()
-    .length(2, 'UF deve ter 2 letras')
     .transform(s => s.toUpperCase())
+    .refine(s => s === '' || (VALID_UFS as readonly string[]).includes(s), 'UF inválida')
     .optional()
     .or(z.literal('')),
-  cep: z.string().trim().max(9).optional().or(z.literal('')),
-  description: z.string().trim().max(1000).transform(sanitizeMultiline).optional().or(z.literal('')),
+  cep: z
+    .string()
+    .trim()
+    .transform(s => s.replace(/\D/g, ''))
+    .refine(s => s === '' || /^\d{8}$/.test(s), 'CEP deve ter 8 dígitos')
+    .optional()
+    .or(z.literal('')),
+  description: z
+    .string()
+    .trim()
+    .max(1000)
+    .refine(s => s === '' || s.length >= 10, 'Descrição deve ter ao menos 10 caracteres')
+    .transform(sanitizeMultiline)
+    .optional()
+    .or(z.literal('')),
   is24Hours: z.boolean(),
   specialties: z
     .array(z.enum(CLINIC_SPECIALTIES))

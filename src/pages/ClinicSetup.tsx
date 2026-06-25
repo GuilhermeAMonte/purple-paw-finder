@@ -6,11 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Heart, Building2, Clock, Stethoscope, Plus, Trash2, Loader2, Save } from 'lucide-react';
+import { Heart, Building2, Clock, Stethoscope, Trash2, Loader2, Save } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { CLINIC_SPECIALTIES, ANIMAL_TYPES } from '@/constants/specialties';
-import { clinicSetupSchema } from '@/schemas/clinic.schemas';
+import { clinicSetupSchema, VALID_UFS } from '@/schemas/clinic.schemas';
 import { getClinic, saveClinicSetup } from '@/lib/clinics';
 import { lookupCEP } from '@/lib/cep';
 import { sanitizeLine } from '@/lib/sanitize';
@@ -201,6 +202,7 @@ const ClinicSetup = () => {
     const result = clinicSetupSchema.safeParse({
       ...formData,
       phone: formData.phone.replace(/\D/g, ''),
+      cnpj: formData.cnpj.replace(/\D/g, ''),
     });
     if (!result.success) {
       const firstError = result.error.issues[0];
@@ -404,14 +406,19 @@ const ClinicSetup = () => {
                   <Label htmlFor="state" className="text-gray-700">
                     Estado
                   </Label>
-                  <Input
-                    id="state"
-                    name="state"
+                  <Select
                     value={formData.state}
-                    onChange={handleInputChange}
-                    placeholder="SP"
-                    className="border-purple-200 focus:border-purple-400"
-                  />
+                    onValueChange={val => setFormData(prev => ({ ...prev, state: val }))}
+                  >
+                    <SelectTrigger id="state" className="border-purple-200 focus:border-purple-400">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {VALID_UFS.map(uf => (
+                        <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
