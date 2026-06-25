@@ -150,14 +150,16 @@ const ClientRegister = () => {
   };
 
   const validateStep2 = () => {
-    if (!formData.phone || !formData.cep || !formData.estado || !formData.cidade || !formData.rua || !formData.numero) {
+    if (!formData.cep || !formData.estado || !formData.cidade || !formData.rua || !formData.numero) {
       toast({ title: "Erro", description: "Preencha todos os campos de endereço.", variant: "destructive" });
       return false;
     }
-    const phoneDigits = formData.phone.replace(/\D/g, '');
-    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
-      toast({ title: "Telefone inválido", description: "O telefone deve ter 10 ou 11 dígitos.", variant: "destructive" });
-      return false;
+    if (formData.phone) {
+      const phoneDigits = formData.phone.replace(/\D/g, '');
+      if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+        toast({ title: "Telefone inválido", description: "O telefone deve ter 10 ou 11 dígitos.", variant: "destructive" });
+        return false;
+      }
     }
     return true;
   };
@@ -400,8 +402,8 @@ const ClientRegister = () => {
               {currentStep === 2 && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone</Label>
-                    <Input id="phone" name="phone" inputMode="numeric" maxLength={16} value={formData.phone} onChange={handlePhoneChange} placeholder="(11) 99999-9999" autoComplete="tel" required />
+                    <Label htmlFor="phone">Telefone <span className="text-xs text-muted-foreground">(opcional)</span></Label>
+                    <Input id="phone" name="phone" inputMode="numeric" maxLength={16} value={formData.phone} onChange={handlePhoneChange} placeholder="(11) 99999-9999" autoComplete="tel" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cep">CEP</Label>
