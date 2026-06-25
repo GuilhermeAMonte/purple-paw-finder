@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import HCaptchaWidget from '@/components/HCaptchaWidget';
 import type HCaptcha from '@hcaptcha/react-hcaptcha';
 import { sanitizeLine, sanitizeMultiline } from '@/lib/sanitize';
+import { validateCPF } from '@/lib/cpf';
 
 const ClientRegister = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -24,6 +25,7 @@ const ClientRegister = () => {
     name: '',
     email: '',
     cpf: '',
+    birthDate: '',
     password: '',
     confirmPassword: '',
     phone: '',
@@ -71,6 +73,25 @@ const ClientRegister = () => {
     setPetData({ ...petData, [e.target.name]: e.target.value });
   };
 
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+    let masked = digits;
+    if (digits.length > 9) masked = `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6,9)}-${digits.slice(9)}`;
+    else if (digits.length > 6) masked = `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6)}`;
+    else if (digits.length > 3) masked = `${digits.slice(0,3)}.${digits.slice(3)}`;
+    setFormData(prev => ({ ...prev, cpf: masked }));
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+    let masked = digits;
+    if (digits.length > 10) masked = `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7)}`;
+    else if (digits.length > 6) masked = `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+    else if (digits.length > 2) masked = `(${digits.slice(0,2)}) ${digits.slice(2)}`;
+    else if (digits.length > 0) masked = `(${digits}`;
+    setFormData(prev => ({ ...prev, phone: masked }));
+  };
+
   const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const cep = e.target.value.replace(/\D/g, '');
     setFormData({ ...formData, cep });
@@ -106,12 +127,19 @@ const ClientRegister = () => {
   };
 
   const validateStep1 = () => {
-    if (!formData.name || !formData.email || !formData.cpf || !formData.password || !formData.confirmPassword) {
+    if (!formData.name || !formData.email || !formData.cpf || !formData.birthDate || !formData.password || !formData.confirmPassword) {
       toast({ title: "Erro", description: "Preencha todos os campos.", variant: "destructive" });
       return false;
     }
-    if (formData.cpf.replace(/\D/g, '').length !== 11) {
-      toast({ title: "CPF inválido", description: "O CPF deve ter 11 dígitos.", variant: "destructive" });
+    if (!validateCPF(formData.cpf)) {
+      toast({ title: "CPF inválido", description: "Verifique os dígitos do CPF.", variant: "destructive" });
+      return false;
+    }
+    const birth = new Date(formData.birthDate);
+    const cutoff = new Date();
+    cutoff.setFullYear(cutoff.getFullYear() - 18);
+    if (birth > cutoff) {
+      toast({ title: "Idade mínima", description: "É necessário ter pelo menos 18 anos para se cadastrar.", variant: "destructive" });
       return false;
     }
     if (!isPasswordValid || !passwordsMatch) {
@@ -124,6 +152,11 @@ const ClientRegister = () => {
   const validateStep2 = () => {
     if (!formData.phone || !formData.cep || !formData.estado || !formData.cidade || !formData.rua || !formData.numero) {
       toast({ title: "Erro", description: "Preencha todos os campos de endereço.", variant: "destructive" });
+      return false;
+    }
+    const phoneDigits = formData.phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      toast({ title: "Telefone inválido", description: "O telefone deve ter 10 ou 11 dígitos.", variant: "destructive" });
       return false;
     }
     return true;
@@ -272,7 +305,19 @@ const ClientRegister = () => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cpf">CPF</Label>
-                    <Input id="cpf" name="cpf" inputMode="numeric" maxLength={14} value={formData.cpf} onChange={handleInputChange} placeholder="000.000.000-00" required />
+                    <Input id="cpf" name="cpf" inputMode="numeric" maxLength={14} value={formData.cpf} onChange={handleCpfChange} placeholder="000.000.000-00" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="birthDate">Data de nascimento</Label>
+                    <Input
+                      id="birthDate"
+                      name="birthDate"
+                      type="date"
+                      value={formData.birthDate}
+                      onChange={handleInputChange}
+                      max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Senha</Label>
@@ -356,7 +401,7 @@ const ClientRegister = () => {
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Telefone</Label>
-                    <Input id="phone" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="(11) 99999-9999" autoComplete="tel" required />
+                    <Input id="phone" name="phone" inputMode="numeric" maxLength={16} value={formData.phone} onChange={handlePhoneChange} placeholder="(11) 99999-9999" autoComplete="tel" required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cep">CEP</Label>
