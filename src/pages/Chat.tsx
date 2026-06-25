@@ -118,9 +118,15 @@ const Chat = () => {
   /* ── Send ───────────────────────────────────────────────────────── */
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !ticketId || !user) return;
+    if (!ticketId || !user) return;
 
-    if (isEmergency && !firstMsgSent && input.length > 120) {
+    const trimmed = input.trim();
+    if (!trimmed) {
+      toast({ title: 'Mensagem vazia', description: 'Digite algo antes de enviar.', variant: 'destructive' });
+      return;
+    }
+
+    if (isEmergency && !firstMsgSent && trimmed.length > 120) {
       toast({ title: 'Limite excedido', description: 'Primeira mensagem: máx. 120 caracteres.', variant: 'destructive' });
       return;
     }
@@ -128,7 +134,7 @@ const Chat = () => {
     setSending(true);
     try {
       const senderType = user.userType === 'clinic' ? 'clinic' : 'client';
-      await sendSupabaseMessage(ticketId, user.id, senderType, input.trim());
+      await sendSupabaseMessage(ticketId, user.id, senderType, trimmed);
       setInput('');
       if (!firstMsgSent) setFirstMsgSent(true);
       atBottom.current = true;
