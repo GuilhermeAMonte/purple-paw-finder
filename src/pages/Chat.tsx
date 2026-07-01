@@ -228,7 +228,7 @@ const Chat = () => {
       }}>
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate(user?.userType === 'clinic' ? '/clinic-dashboard' : '/my-appointments')} className="text-white hover:bg-white/20">
+            <Button variant="ghost" size="icon" aria-label="Voltar" onClick={() => navigate(user?.userType === 'clinic' ? '/clinic-dashboard' : '/my-appointments')} className="text-white hover:bg-white/20">
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <Avatar className="w-11 h-11 border-2 border-white/60">
@@ -247,12 +247,12 @@ const Chat = () => {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
+            <Button variant="ghost" size="icon" aria-label="Ligar para a clínica" className="text-white hover:bg-white/20">
               <Phone className="w-4 h-4" />
             </Button>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
+                <Button variant="ghost" size="icon" aria-label="Mais opções" className="text-white hover:bg-white/20">
                   <MoreVertical className="w-4 h-4" />
                 </Button>
               </PopoverTrigger>

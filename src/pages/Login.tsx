@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { loginSchema } from '@/schemas/auth.schemas';
 import HCaptchaWidget from '@/components/HCaptchaWidget';
 import type HCaptcha from '@hcaptcha/react-hcaptcha';
+import SEO from '@/components/SEO';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -70,6 +71,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex">
+      <SEO title="Entrar" description="Acesse sua conta Paw Connect para gerenciar agendamentos e clínicas." />
 
       {/* Left panel — branding (hidden on mobile) */}
       <div className="hidden lg:flex lg:flex-col lg:w-[46%] xl:w-[42%] relative overflow-hidden bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-12 text-white">

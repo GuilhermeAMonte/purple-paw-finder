@@ -17,6 +17,7 @@ import HCaptchaWidget from '@/components/HCaptchaWidget';
 import type HCaptcha from '@hcaptcha/react-hcaptcha';
 import { sanitizeLine, sanitizeMultiline } from '@/lib/sanitize';
 import { validateCPF } from '@/lib/cpf';
+import SEO from '@/components/SEO';
 
 const ClientRegister = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -239,6 +240,7 @@ const ClientRegister = () => {
 
   return (
     <div className="min-h-screen bg-gradient-purple-light flex items-center justify-center p-4">
+      <SEO title="Cadastro de Cliente" description="Crie sua conta de cliente no Paw Connect e agende consultas veterinárias para o seu pet." />
       <div className="w-full max-w-2xl">
         <div className="mb-8 text-center">
           <Link to="/" className="inline-flex items-center text-purple-600 hover:text-purple-700 mb-4">

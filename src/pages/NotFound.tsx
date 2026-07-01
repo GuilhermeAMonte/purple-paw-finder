@@ -1,6 +1,7 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import { PawPrint, ArrowLeft } from "lucide-react";
+import SEO from '@/components/SEO';
 
 const NotFound = () => {
   const location = useLocation();
@@ -11,6 +12,7 @@ const NotFound = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <SEO title="Página não encontrada" description="A página que você procura não existe." noIndex />
       <div className="text-center max-w-md animate-scale-in">
         {/* Logo */}
         <div className="w-16 h-16 gradient-purple rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-depth-md">
