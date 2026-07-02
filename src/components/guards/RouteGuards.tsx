@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 /** Tela de carregamento enquanto a sessão é resolvida (evita redirect prematuro). */
@@ -28,8 +28,12 @@ export function PrivateRoute({ children }: { children: React.ReactNode }) {
  */
 export function ClientRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading, user } = useAuth();
+  const location = useLocation();
   if (loading) return <AuthLoading />;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    const returnTo = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?returnTo=${returnTo}`} replace />;
+  }
   if (user?.userType !== 'client') return <Navigate to="/" replace />;
   return <>{children}</>;
 }

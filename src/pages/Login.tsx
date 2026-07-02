@@ -1,6 +1,6 @@
 
-import React, { useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useRef, useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,9 +20,22 @@ const Login = () => {
   const [captchaToken, setCaptchaToken] = useState('');
   const captchaRef = useRef<HCaptcha>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo');
   const { toast } = useToast();
   const { login } = useAuth();
   const captchaRequired = !!import.meta.env.VITE_HCAPTCHA_SITE_KEY;
+
+  // Veio de uma tentativa de interação com uma clínica sem estar logado.
+  useEffect(() => {
+    if (returnTo) {
+      toast({
+        title: 'Só mais um passo! 🐾',
+        description: 'Entre na sua conta para prosseguir o atendimento com a clínica.',
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +68,7 @@ const Login = () => {
           navigate('/clinic-dashboard');
         }
       } else {
-        navigate('/');
+        navigate(returnTo || '/');
       }
     } catch (error: any) {
       captchaRef.current?.resetCaptcha();
@@ -217,7 +230,7 @@ const Login = () => {
           {/* Sign up link */}
           <p className="text-sm text-muted-foreground text-center mt-6">
             Ainda não tem uma conta?{' '}
-            <Link to="/register" className="text-primary font-medium hover:text-primary/80 smooth-transition">
+            <Link to={returnTo ? `/client-register?returnTo=${encodeURIComponent(returnTo)}` : '/register'} className="text-primary font-medium hover:text-primary/80 smooth-transition">
               Criar conta gratuita
             </Link>
           </p>

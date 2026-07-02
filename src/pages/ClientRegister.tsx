@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -52,6 +52,8 @@ const ClientRegister = () => {
   const captchaRef = useRef<HCaptcha>(null);
   const captchaRequired = !!import.meta.env.VITE_HCAPTCHA_SITE_KEY;
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get('returnTo');
   const { toast } = useToast();
   const { register } = useAuth();
 
@@ -206,13 +208,13 @@ const ClientRegister = () => {
         });
 
         toast({ title: "Sucesso!", description: "Conta criada com sucesso!" });
-        navigate('/');
+        navigate(returnTo || '/');
       } else {
         toast({
           title: "Quase lá!",
           description: "Verifique seu e-mail para confirmar a conta e depois faça login.",
         });
-        navigate('/login');
+        navigate(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
       }
     } catch (error) {
       captchaRef.current?.resetCaptcha();
@@ -224,7 +226,7 @@ const ClientRegister = () => {
           title: "Conta já existente",
           description: "Esse e-mail já possui uma conta. Redirecionando para o login...",
         });
-        navigate('/login');
+        navigate(returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login');
         return;
       }
 
@@ -538,7 +540,7 @@ const ClientRegister = () => {
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
                 Já tem uma conta?{' '}
-                <Link to="/login" className="text-purple-600 hover:text-purple-700 font-medium hover:underline">
+                <Link to={returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login'} className="text-purple-600 hover:text-purple-700 font-medium hover:underline">
                   Entrar
                 </Link>
               </p>
