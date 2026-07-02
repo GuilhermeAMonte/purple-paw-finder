@@ -43,9 +43,9 @@ const App = () => (
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/register" element={<Register />} />
               <Route path="/client-register" element={<ClientRegister />} />
+              <Route path="/clinic/:id" element={<ClinicDetails />} />
 
               {/* Compartilhadas (qualquer usuário autenticado) */}
-              <Route path="/clinic/:id" element={<PrivateRoute><ClinicDetails /></PrivateRoute>} />
               <Route path="/clinic/:id/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
 
               {/* Exclusivas de Cliente */}

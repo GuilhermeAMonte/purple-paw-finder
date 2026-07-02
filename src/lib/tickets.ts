@@ -11,11 +11,12 @@
 
 import { supabase } from './supabase';
 import type { SpeciesType } from '@/types/database';
+import { sanitizeLine, sanitizeMultiline } from './sanitize';
 
 const db = supabase;
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
-export type TicketStatus   = 'pending' | 'confirmed' | 'cancelled';
+export type TicketStatus   = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 export type MessageSender  = 'client' | 'clinic' | 'system';
 
 export interface Ticket {
@@ -37,6 +38,15 @@ export interface Ticket {
   rejection_reason?: string | null;
   is_emergency: boolean;
   created_at: string;
+  // price confirmation flow
+  pending_vet_id?: string | null;
+  pending_price?: number | null;
+  client_confirmation?: 'pending' | 'confirmed' | 'cancelled' | null;
+  // completion
+  completed_at?: string | null;
+  final_amount?: number | null;
+  treatment_summary?: string | null;
+  payment_proof_url?: string | null;
   // joined
   clinic_name?: string;
   client_name?: string;
@@ -132,16 +142,34 @@ export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
   const userId = await getAuthUserId();
   if (!userId) throw new Error('Sessão expirada. Faça login novamente.');
 
-  // Garante que o ticket é criado em nome do próprio usuário (anti-IDOR no INSERT)
   if (input.user_id !== userId) {
     throw new Error('Não é permitido criar tickets em nome de outro usuário.');
+  }
+
+  const petName    = sanitizeLine(input.pet_name);
+  const petSpecies = sanitizeLine(input.pet_species);
+  const petBreed   = sanitizeLine(input.pet_breed);
+  const service    = sanitizeLine(input.service);
+  const title      = sanitizeLine(input.title);
+  const description = sanitizeMultiline(input.description);
+
+  if (!petName || !petSpecies || !service || !title || !description) {
+    throw new Error('Campos obrigatórios do chamado não podem ser vazios.');
+  }
+  if (!input.scheduled_date || !input.scheduled_time) {
+    throw new Error('Data e horário da consulta são obrigatórios.');
   }
 
   const { data, error } = await db
     .from('tickets')
     .insert({
       ...input,
-      pet_species: input.pet_species as SpeciesType,
+      pet_name:    petName,
+      pet_species: petSpecies as SpeciesType,
+      pet_breed:   petBreed,
+      service,
+      title,
+      description,
       approval_status: 'pending',
       status: 'pending',
     })
@@ -201,25 +229,87 @@ export async function approveTicket(ticketId: string): Promise<void> {
 }
 
 export async function rejectTicket(ticketId: string, reason: string): Promise<void> {
-  // Somente a clínica dona pode rejeitar
   await assertTicketClinic(ticketId);
 
   const { error } = await db
     .from('tickets')
-    .update({ approval_status: 'rejected', status: 'cancelled', rejection_reason: reason })
+    .update({ approval_status: 'rejected', status: 'cancelled', rejection_reason: sanitizeLine(reason) })
     .eq('id', ticketId);
   if (error) throw error;
 }
 
 export async function cancelTicket(ticketId: string): Promise<void> {
-  // Qualquer participante (cliente ou clínica) pode cancelar
-  await assertTicketParticipant(ticketId);
+  const userId = await getAuthUserId();
+  if (!userId) throw new Error('Sessão expirada. Faça login novamente.');
 
-  const { error } = await db
+  const ticket = await assertTicketParticipant(ticketId);
+
+  if (ticket.user_id === userId) {
+    // Cliente: usa SECURITY DEFINER RPC — evita UPDATE direto sem restrição de coluna
+    const { error } = await (db as any).rpc('cancel_ticket', { p_ticket_id: ticketId });
+    if (error) throw error;
+  } else {
+    // Clínica: UPDATE direto coberto pela policy "tickets: clinic updates"
+    const { error } = await db
+      .from('tickets')
+      .update({ status: 'cancelled', approval_status: 'rejected' })
+      .eq('id', ticketId);
+    if (error) throw error;
+  }
+}
+
+export async function proposeAppointmentPrice(
+  ticketId: string,
+  vetId: string,
+  price?: number,
+): Promise<void> {
+  await assertTicketClinic(ticketId);
+
+  const { error } = await (db as any)
     .from('tickets')
-    .update({ status: 'cancelled', approval_status: 'rejected' })
+    .update({
+      pending_vet_id: vetId,
+      pending_price: price ?? null,
+      client_confirmation: 'pending',
+    })
     .eq('id', ticketId);
   if (error) throw error;
+}
+
+export async function clientConfirmAppointment(ticketId: string): Promise<void> {
+  const { error } = await (db as any).rpc('client_confirm_appointment', { p_ticket_id: ticketId });
+  if (error) throw error;
+}
+
+export async function clientCancelAppointment(ticketId: string): Promise<void> {
+  const { error } = await (db as any).rpc('client_cancel_appointment', { p_ticket_id: ticketId });
+  if (error) throw error;
+}
+
+export async function completeTicket(
+  ticketId: string,
+  data: { finalAmount?: number; treatmentSummary?: string; paymentProofUrl?: string },
+): Promise<void> {
+  await assertTicketClinic(ticketId);
+
+  const { error } = await (db as any)
+    .from('tickets')
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      final_amount: data.finalAmount ?? null,
+      treatment_summary: data.treatmentSummary ?? null,
+      payment_proof_url: data.paymentProofUrl ?? null,
+    })
+    .eq('id', ticketId);
+  if (error) throw error;
+
+  // Best-effort: mark linked vet_appointment as completed
+  await (db as any)
+    .from('vet_appointments')
+    .update({ status: 'completed' })
+    .eq('ticket_id', ticketId)
+    .neq('status', 'cancelled');
 }
 
 // ─── Chat messages ───────────────────────────────────────────────────────────
@@ -243,7 +333,9 @@ export async function sendMessage(
   senderType: MessageSender,
   text: string,
 ): Promise<ChatMessage> {
-  // Valida participação e que o sender é o próprio usuário
+  const sanitized = sanitizeMultiline(text);
+  if (sanitized.length === 0) throw new Error('Mensagem não pode ser vazia.');
+
   const userId = await getAuthUserId();
   if (!userId) throw new Error('Sessão expirada. Faça login novamente.');
 
@@ -259,7 +351,7 @@ export async function sendMessage(
       ticket_id: ticketId,
       sender_id: senderType === 'system' ? null : senderId,
       sender_type: senderType,
-      text,
+      text: sanitized,
       type: senderType === 'system' ? 'system' : 'text',
     })
     .select()

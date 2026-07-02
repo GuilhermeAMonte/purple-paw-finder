@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, PawPrint } from 'lucide-react';
+import SEO from '@/components/SEO';
 
 const LAST_UPDATED = '2026-06-11';
 const VERSION = '1.0';
@@ -9,6 +10,7 @@ const COMPANY = 'Purple-Paw-Connect';
 
 const PrivacyPolicy = () => (
   <div className="min-h-screen bg-white">
+    <SEO title="Política de Privacidade" description="Política de privacidade e proteção de dados do Paw Connect." />
     <header className="border-b border-gray-100 sticky top-0 bg-white z-10">
       <div className="max-w-3xl mx-auto px-5 py-4 flex items-center gap-3">
         <Link to="/" className="inline-flex items-center gap-2 text-gray-600 hover:text-purple-600 transition-colors text-sm">

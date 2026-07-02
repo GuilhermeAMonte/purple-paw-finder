@@ -6,8 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import SEO from '@/components/SEO';
 import { getClinicPublic } from '@/lib/clinics';
 import { isClinicOpen } from '@/lib/clinicSearch';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const WEEKDAY_LABELS: Array<[string, string]> = [
   ['monday', 'Segunda'],
@@ -22,6 +25,8 @@ const WEEKDAY_LABELS: Array<[string, string]> = [
 const ClinicDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
+  const { toast } = useToast();
 
   const { data: clinic, isLoading, isError } = useQuery({
     queryKey: ['clinic', id],
@@ -29,10 +34,36 @@ const ClinicDetails = () => {
     enabled: !!id,
   });
 
+  /**
+   * Interações que exigem conta (abrir chamado, emergência) ficam liberadas
+   * para visitantes verem a clínica, mas ao tentar agir são convidados,
+   * de forma amigável, a criar uma conta antes de prosseguir.
+   */
+  const requireAuth = (targetPath: string) => {
+    if (!isAuthenticated) {
+      toast({
+        title: 'Só mais um passo! 🐾',
+        description: 'Faça o cadastro para prosseguir o atendimento com a clínica.',
+      });
+      navigate(`/client-register?returnTo=${encodeURIComponent(targetPath)}`);
+      return;
+    }
+    if (user?.userType !== 'client') {
+      toast({
+        title: 'Ação exclusiva para tutores',
+        description: 'Contas de clínica não podem abrir chamados. Entre com uma conta de cliente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    navigate(targetPath);
+  };
+
   // ── Carregando ──────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
+        <SEO title="Carregando clínica…" description="Detalhes da clínica veterinária." noIndex />
         <Header />
         <main className="pt-20 max-w-7xl mx-auto px-6 py-8">
           <div className="h-10 w-32 skeleton mb-8" />
@@ -59,6 +90,7 @@ const ClinicDetails = () => {
   if (isError || !clinic || !clinic.clinic_name) {
     return (
       <div className="min-h-screen bg-background">
+        <SEO title="Clínica não encontrada" description="Essa clínica não está disponível." noIndex />
         <Header />
         <main className="pt-20 max-w-3xl mx-auto px-6 py-24 text-center animate-fade-in-up">
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
@@ -84,9 +116,17 @@ const ClinicDetails = () => {
     .join(', ');
   const schedules = (clinic.schedules ?? {}) as Record<string, { open: string; close: string; isOpen: boolean }>;
   const services = clinic.services?.length ? clinic.services : clinic.specialties;
+  const cityState = [clinic.city, clinic.state].filter(Boolean).join(', ');
+  const seoDescription = clinic.description?.trim()
+    || `${clinic.clinic_name}${cityState ? ` em ${cityState}` : ''}${services.length ? ` — ${services.slice(0, 3).join(', ')}` : ''}. Agende sua consulta veterinária pelo Paw Connect.`;
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title={`${clinic.clinic_name}${cityState ? ` — ${cityState}` : ''}`}
+        description={seoDescription}
+        image={clinic.logo_url ?? clinic.cover_url ?? undefined}
+      />
       <Header />
 
       <main className="pt-20">
@@ -103,14 +143,14 @@ const ClinicDetails = () => {
           {/* Botões de contato */}
           <div className="mb-8 flex flex-wrap gap-4 animate-fade-in-up">
             <Button
-              onClick={() => navigate(`/clinic/${id}/create-ticket`)}
+              onClick={() => requireAuth(`/clinic/${id}/create-ticket`)}
               className="bg-primary text-white hover:bg-primary/90 hover-glow px-8 py-3 rounded-2xl text-lg font-medium apple-shadow smooth-transition"
             >
               Contato Normal
             </Button>
             {clinic.is_emergency_available && (
               <Button
-                onClick={() => navigate(`/clinic/${id}/create-ticket?emergency=true`)}
+                onClick={() => requireAuth(`/clinic/${id}/create-ticket?emergency=true`)}
                 className="bg-red-500 text-white hover:bg-red-600 px-8 py-3 rounded-2xl text-lg font-medium apple-shadow smooth-transition pulse-emergency"
               >
                 <AlertCircle className="w-5 h-5 mr-2" />

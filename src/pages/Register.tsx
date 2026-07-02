@@ -13,6 +13,7 @@ import { EMAIL_ALREADY_REGISTERED } from '@/contexts/AuthContext';
 import { registerSchema } from '@/schemas/auth.schemas';
 import HCaptchaWidget from '@/components/HCaptchaWidget';
 import type HCaptcha from '@hcaptcha/react-hcaptcha';
+import SEO from '@/components/SEO';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -174,6 +175,7 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-gradient-purple-light flex items-center justify-center p-4">
+      <SEO title="Criar conta" description="Cadastre-se no Paw Connect como cliente ou clínica veterinária." />
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Link to="/" className="inline-flex items-center text-purple-600 hover:text-purple-700 mb-4">

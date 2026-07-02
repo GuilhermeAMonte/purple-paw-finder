@@ -130,8 +130,17 @@ const CreateTicket = () => {
       toast({ title: 'Campos obrigatórios', description: 'Preencha todos os campos marcados com *.', variant: 'destructive' });
       return;
     }
+    if (formData.description.trim().length < 10) {
+      toast({ title: 'Descrição muito curta', description: 'A descrição deve ter pelo menos 10 caracteres.', variant: 'destructive' });
+      return;
+    }
     if (!formData.scheduledDate || !formData.scheduledTime) {
       toast({ title: 'Data e horário', description: 'Selecione data e horário da consulta.', variant: 'destructive' });
+      return;
+    }
+    const today = new Date().toISOString().split('T')[0];
+    if (formData.scheduledDate < today) {
+      toast({ title: 'Data inválida', description: 'A data da consulta não pode ser no passado.', variant: 'destructive' });
       return;
     }
     const petName = selectedPet?.name ?? formData.petName;

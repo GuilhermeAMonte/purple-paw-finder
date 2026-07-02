@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import BreedSelector from '@/components/BreedSelector';
 import { supabase } from '@/lib/supabase';
 import { validateImageFile } from '@/utils/fileValidation';
+import SEO from '@/components/SEO';
 
 interface Pet {
   id: string;
@@ -313,6 +314,7 @@ const Profile = () => {
   /* ─────────────────────────────────────────────────────────── */
   return (
     <div className="min-h-screen bg-muted/30">
+      <SEO title="Meu Perfil" description="Gerencie seus dados e pets." noIndex />
       <div className="max-w-2xl mx-auto p-6">
         <div className="mb-6">
           <Button variant="ghost" onClick={() => navigate('/')} className="mb-4">

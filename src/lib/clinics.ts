@@ -61,10 +61,18 @@ function mapClinicSaveError(message: string, code?: string): string {
 }
 
 /** Busca a clínica do usuário autenticado (para pré-preencher formulários).
- *  Só retorna dados se auth.uid() === clinicId (enforced pela RLS).
  *  Inclui PIIs como CNPJ — usar apenas no dashboard da clínica.
+ *  Segurança: a RLS "clinics: owner read" só libera a linha onde
+ *  auth.uid() = id. O guard abaixo é defense-in-depth no frontend para
+ *  bloquear tentativas de ler a clínica de outro usuário (IDOR).
  */
 export async function getClinic(clinicId: string): Promise<ClinicRow | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Sessão expirada. Faça login novamente.');
+  if (user.id !== clinicId) {
+    throw new Error('Acesso negado: você não tem permissão para acessar esta clínica.');
+  }
+
   const { data, error } = await supabase
     .from('clinics')
     .select('*')

@@ -13,7 +13,7 @@ import { supabase } from './supabase';
 const db = supabase;
 
 export type ServiceType = 'in_person' | 'online' | 'both';
-export type SlotStatus  = 'booked' | 'unavailable' | 'cancelled';
+export type SlotStatus  = 'booked' | 'unavailable' | 'cancelled' | 'completed';
 
 export interface Veterinarian {
   id: string;
@@ -264,7 +264,7 @@ export async function fetchClinicMonthAppointments(
 export async function bookVetSlot(input: BookSlotInput): Promise<VetAppointment> {
   await assertClinicOwner(input.clinic_id);
 
-  const { data, error } = await db
+  const { data, error } = await (db as any)
     .from('vet_appointments')
     .insert({ ...input, status: input.status ?? 'booked' })
     .select()
