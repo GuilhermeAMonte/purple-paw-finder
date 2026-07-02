@@ -12,6 +12,7 @@ import { fetchClientTickets, cancelTicket, sendMessage, type Ticket } from '@/li
 import { useToast } from '@/hooks/use-toast';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import SEO from '@/components/SEO';
 
 type Tab = 'pending' | 'active' | 'completed' | 'rejected';
 
@@ -228,6 +229,7 @@ const MyAppointments = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO title="Meus Agendamentos" description="Acompanhe seus agendamentos veterinários." noIndex />
       <Header />
       <main className="pt-20">
         <div className="max-w-4xl mx-auto px-6 py-8">

@@ -18,6 +18,7 @@ import {
   type ChatMessage,
 } from '@/lib/tickets';
 import { supabase } from '@/lib/supabase';
+import SEO from '@/components/SEO';
 
 const INITIAL_MSG = 'Olá! Recebemos seu chamado e em breve responderemos. Caso precise de mais informações, é só enviar uma mensagem aqui.';
 const INITIAL_EMERGENCY = 'ATENDIMENTO EMERGENCIAL — Um atendente irá responder em instantes. Por favor, descreva a emergência brevemente.';
@@ -197,6 +198,7 @@ const Chat = () => {
   if (accessDenied) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <SEO title="Acesso negado" description="Você não tem permissão para acessar esta conversa." noIndex />
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
             <Ban className="w-7 h-7 text-red-500" />
@@ -218,6 +220,7 @@ const Chat = () => {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: isEmergency ? 'linear-gradient(to bottom, #fef2f2, #fff)' : 'hsl(var(--muted)/0.3)' }}>
+      <SEO title={`Conversa com ${clinicName}`} description="Chat de atendimento veterinário." noIndex />
 
       {/* Header */}
       <div className="sticky top-0 z-10" style={{

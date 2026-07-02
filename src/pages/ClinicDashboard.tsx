@@ -40,6 +40,7 @@ import {
 } from '@/lib/tickets';
 import { supabase } from '@/lib/supabase';
 import { updateClinicProfile, getClinic, changeClinicPlan } from '@/lib/clinics';
+import SEO from '@/components/SEO';
 
 type PlanKey = 'free' | 'basic' | 'intermediary' | 'experience';
 const PLAN_LABELS: Record<PlanKey, string> = {
@@ -759,6 +760,7 @@ const ClinicDashboard = () => {
   /* ─────────────────────────────────────────────────────────────── */
   return (
     <div className="min-h-screen bg-muted/30">
+      <SEO title="Dashboard da Clínica" description="Gerencie agendamentos, veterinários e configurações da sua clínica." noIndex />
 
       {/* Header */}
       <header className="bg-background/95 backdrop-blur-md border-b border-border/50 sticky top-0 z-40">
