@@ -19,4 +19,9 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Remove console/debugger do bundle de produção (evita vazamento de
+  // informação em diagnósticos e reduz superfície de info-disclosure).
+  esbuild: {
+    drop: mode === 'production' ? ['console', 'debugger'] : [],
+  },
 }));
